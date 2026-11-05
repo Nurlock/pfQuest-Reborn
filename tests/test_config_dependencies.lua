@@ -99,6 +99,16 @@ end
 assert(foundDropChance, "mindropchance must live under Loot Panel")
 print("  ✓ PASS: mindropchance is under Loot Panel")
 
+print("[TEST] Verifying showloots options under Loot Panel...")
+local foundToggle, foundMax = false, false
+for _, data in ipairs(lootTab.entries) do
+  if data.config == "showloots" then foundToggle = true end
+  if data.config == "showlootsMaxLines" then foundMax = true end
+end
+assert(foundToggle, "showloots toggle must exist under Loot Panel")
+assert(foundMax, "showlootsMaxLines must exist under Loot Panel")
+print("  PASS: showloots options present")
+
 print("[TEST] Verifying Group Sync gating: children follow epochgroupsync master...")
 assert(pfQuest_config["epochgroupsync"] == "1", "epochgroupsync should default to '1'")
 assert(pfQuestConfig:IsEntryActive(pfQuestConfig.configMap["epochgroupsync"]) == true, "epochgroupsync master itself must be active")

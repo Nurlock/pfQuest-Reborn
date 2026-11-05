@@ -161,6 +161,8 @@ pfQuest_defconfig = {
   { text = L["Show Recipe Scrolls"], default = "1", type = "checkbox", config = "epochLootPanelShowRecipes" },
   { text = L["Show Grey Quality Items"], default = "1", type = "checkbox", config = "epochLootPanelShowGrey" },
   { text = L["Show White Quality Items"], default = "1", type = "checkbox", config = "epochLootPanelShowWhite" },
+  { text = L["Show Mob Loot In Tooltip"], default = "1", type = "checkbox", config = "showloots" },
+  { text = L["Max Loot Lines In Tooltip"], default = "5", type = "text", config = "showlootsMaxLines", parent = "showloots" },
 
   { text = L["Nameplates"], default = nil, type = "header" },
   { text = L["Show Quest Icons on Nameplates"], default = "1", type = "checkbox", config = "epochnameplatesEnabled" },
