@@ -110,6 +110,7 @@ local function GetVisibleDrops(unitid)
   return visible
 end
 
+
 local panel = CreateFrame("Frame", "pfQuestLootPanel", UIParent)
 panel:SetFrameStrata("TOOLTIP")
 panel:SetFrameLevel(200)
@@ -256,6 +257,24 @@ function pfQuestLoot.Hide()
   pinned = false
   pinnedUnitId = nil
   panel:Hide()
+end
+
+-- ShowLoots: top-N drop lines for a unit id, sorted by chance desc.
+function pfQuestLoot.GetTooltipLines(unitid, maxLines)
+  local drops = BuildDropsForUnit(unitid)
+  if not drops or not next(drops) then return {} end
+  local minChance = tonumber(pfQuest_config and pfQuest_config["mindropchance"]) or 0
+  local showReference = not pfQuest_config or pfQuest_config["epochLootPanelShowReference"] ~= "0"
+  local lines = {}
+  for _, drop in ipairs(drops) do
+    if showReference or not drop.isRef then
+      if (drop.chance or 0) >= minChance then
+        table.insert(lines, { item = drop.item, chance = drop.chance })
+        if maxLines and #lines >= maxLines then break end
+      end
+    end
+  end
+  return lines
 end
 
 local function ApplyItemVisuals(button, itemid)
