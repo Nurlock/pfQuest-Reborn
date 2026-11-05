@@ -3,3 +3,6 @@ dist/
 *.tsv
 
 __pycache__/
+
+# Pix Agent
+.pi/

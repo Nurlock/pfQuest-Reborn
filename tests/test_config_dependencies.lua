@@ -57,14 +57,14 @@ local pfQuest_defconfig = env.pfQuest_defconfig
 pfQuestConfig:LoadConfig()
 pfQuestConfig:CreateConfigEntries(pfQuest_defconfig)
 
-print("[TEST] Verifying tab layout: 9 tabs in frequency order...")
+print("[TEST] Verifying tab layout: 10 tabs in frequency order...")
 local tabKeys = {}
 for _, tabInfo in ipairs(pfQuestConfig.tabList) do
   table.insert(tabKeys, tabInfo.key)
 end
 local expectedTabs = {
   "Quests", "Tracker", "Map & Minimap", "Group Sync & Chat", "Loot Panel",
-  "Nameplates", "Automation", "General", "User Data",
+  "Nameplates", "Automation", "General", "User Data", "Debug",
 }
 assert(table.getn(tabKeys) == table.getn(expectedTabs),
   "expected " .. table.getn(expectedTabs) .. " tabs, got " .. table.getn(tabKeys))
@@ -175,5 +175,25 @@ routesFrame.input:FireScript("OnClick")
 assert(arrowFrame.enabled == false, "arrow must be disabled when routes=0")
 assert(arrowScaleFrame.enabled == false, "arrowscale must remain disabled when routes=0")
 print("  ✓ PASS: Routes hierarchy and slider disabling verified")
+
+print("[TEST] Verifying Debug tab with Generate Debug Log button...")
+local debugTab = nil
+for _, tabInfo in ipairs(pfQuestConfig.tabList) do
+  if tabInfo.key == "Debug" then debugTab = tabInfo break end
+end
+assert(debugTab, "Debug tab must exist")
+local foundButton = false
+for _, data in ipairs(debugTab.entries) do
+  if data.type == "button" and data.text == "Generate Debug Log" then
+    assert(data.func, "Generate Debug Log button must have a func")
+    local called = false
+    env.pfQuest.GenerateDebugLog = function() called = true end
+    data.func()
+    assert(called, "button func must call pfQuest:GenerateDebugLog")
+    foundButton = true
+  end
+end
+assert(foundButton, "Generate Debug Log button must live under Debug")
+print("  PASS: Debug tab button wired to pfQuest:GenerateDebugLog")
 
 print("test_config_dependencies PASSED successfully!")

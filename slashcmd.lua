@@ -388,56 +388,7 @@ SlashCmdList["PFQUESTDEBUG"] = function(msg)
         print("|cff33ffccpf|cffffffffQuest:|r Debug commands are disabled.")
         return
     end
-    local epoch = pfQuest.partyapi
-    print("|cff33ffccpf|cffffffffQuest Debug:|r")
-    print("=== Addon Status ===")
-    print("pfQuest loaded: " .. tostring(IsAddOnLoaded("pfQuest")))
-    print("pfQuest-epoch loaded: " .. tostring(IsAddOnLoaded("pfQuest-epoch")))
-    print("pfDB exists: " .. tostring(pfDB ~= nil))
-    if pfDB then
-        print("  pfDB.quests exists: " .. tostring(pfDB.quests ~= nil))
-        if pfDB.quests then
-            print("  pfDB.quests.data exists: " .. tostring(pfDB.quests.data ~= nil))
-        end
-    end
-    print("pfQuestCompat exists: " .. tostring(pfQuestCompat ~= nil))
-    print("pfMap exists: " .. tostring(pfMap ~= nil))
-
-    print("=== Party Status ===")
-    print("Party members: " .. (GetNumPartyMembers and GetNumPartyMembers() or 0))
-    print("Feature enabled: " .. tostring(epoch and epoch.IsTooltipEnabled()))
-
-    print("=== Quest Data ===")
-    local myMaps = (epoch and epoch.myQuestMappings) or {}
-    local count = 0
-    for _ in pairs(myMaps) do count = count + 1 end
-    print("myQuestMappings targets: " .. count)
-
-    for targetKey, quests in pairs(myMaps) do
-        print("  |cffffcc00Target:|r " .. targetKey)
-        for _, data in ipairs(quests) do
-            print("    - " .. data.quest .. ": " .. data.objective .. " (" .. data.current .. "/" .. data.total .. ")")
-        end
-    end
-
-    local partyData = (epoch and epoch.partyQuestData) or {}
-    local partyCount = 0
-    for _ in pairs(partyData) do partyCount = partyCount + 1 end
-    print("partyQuestData players: " .. partyCount)
-
-    for playerName, targets in pairs(partyData) do
-        print("  |cff00ff00Player:|r " .. playerName)
-        for targetKey, quests in pairs(targets) do
-            print("    |cffffcc00Target:|r " .. targetKey)
-            for _, data in ipairs(quests) do
-                print("      - " .. data.quest .. ": " .. data.objective .. " (" .. data.current .. "/" .. data.total .. ")")
-            end
-        end
-    end
-
-    if count == 0 and partyCount == 0 then
-        print("|cffff0000No quest data found!|r Try killing a quest mob or running /pfqd after joining a party.")
-    end
+    pfQuest:GenerateDebugLog()
 end
 
 SLASH_PFQUEREBUILD1 = "/pfqrebuild"

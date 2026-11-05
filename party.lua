@@ -261,8 +261,8 @@ local function GetLogObjectives()
     if cachedLogObjectives then return cachedLogObjectives end
     local byTitle = {}
     for qid = 1, GetNumQuestLogEntries() do
-        local questTitle = pfQuestCompat.GetQuestLogTitle(qid)
-        if questTitle then
+        local questTitle, _, _, header = pfQuestCompat.GetQuestLogTitle(qid)
+        if questTitle and not header then
             local list = {}
             byTitle[questTitle] = list
             for i = 1, GetNumQuestLeaderBoards(qid) or 0 do
@@ -502,6 +502,8 @@ local function CaptureMyQuestData(targetKey, questTitle, objectiveText, current,
         myQuestMappings[targetKey] = {}
     end
 
+    -- Tooltip warming must never clobber IDs set by the full DB rebuild:
+    -- only refresh progress on existing rows, never overwrite questId/targets.
     local found = false
     for _, data in ipairs(myQuestMappings[targetKey]) do
         if data.quest == questTitle and data.objective == objectiveText then
@@ -793,6 +795,7 @@ local MAX_PARTY_NAME_LEN = 128
 local MAX_QUEST_TITLE_LEN = 256
 local MAX_OBJECTIVE_LEN = 256
 local MAX_OBJECTIVES_PER_TARGET = 40
+local MAX_TARGETS_PER_SENDER = 64
 
 local function SanitizePartyString(s, maxLen)
     if not s then return nil end
@@ -813,8 +816,14 @@ local function StorePartyObjective(sender, targetName, questId, questTitle, obje
     if not targetName or not questTitle then return end
     objectiveText = SanitizePartyString(objectiveText, MAX_OBJECTIVE_LEN)
     if not partyQuestData[sender] then partyQuestData[sender] = {} end
-    if not partyQuestData[sender][targetName] then partyQuestData[sender][targetName] = {} end
-    local list = partyQuestData[sender][targetName]
+    local senderList = partyQuestData[sender]
+    if not senderList[targetName] then
+        local targetCount = 0
+        for _ in pairs(senderList) do targetCount = targetCount + 1 end
+        if targetCount >= MAX_TARGETS_PER_SENDER then return end
+        senderList[targetName] = {}
+    end
+    local list = senderList[targetName]
     for i, data in ipairs(list) do
         if data.quest == questTitle and (not questId or not data.questId or data.questId == questId) then
             list[i].questId = questId or data.questId
@@ -1011,9 +1020,17 @@ local function ProcessQuestData(sender, message)
                     local cached = logObjectives[questTitle]
                     if cached then
                         for _, obj in ipairs(cached) do
-                            if obj.total == total then
+                            if obj.total == total and obj.current == current then
                                 objectiveText = obj.objective
                                 break
+                            end
+                        end
+                        if not objectiveText then
+                            for _, obj in ipairs(cached) do
+                                if obj.total == total then
+                                    objectiveText = obj.objective
+                                    break
+                                end
                             end
                         end
                     end
@@ -1160,7 +1177,6 @@ local function SyncRequestAllowed(sender)
     lastSyncRequestBySender[sender] = now
     return true
 end
-local INBOUND_THROTTLE_SECS = 1
 
 local function IsTrustedSender(sender, channel)
     if type(sender) ~= "string" or sender == "" then return false end
@@ -1196,7 +1212,15 @@ end
 
 local function HandlePfqeMessage(sender, message)
     if string.sub(message or "", 1, 8) == "REMOVEQ:" then
-        ProcessQuestData(sender, message)
+        if InboundAllowed(sender) then
+            ProcessQuestData(sender, message)
+        else
+            local queued = pendingInboundBySender[sender]
+            if not queued then queued = {} pendingInboundBySender[sender] = queued end
+            if table.getn(queued) >= MAX_QUEUED_BATCHES then table.remove(queued, 1) end
+            table.insert(queued, message)
+            dbg("|cff33ffccpf|cffffffffQuest:|r inbound REMOVEQ from " .. tostring(sender) .. " queued")
+        end
     elseif string.sub(message or "", 1, 3) == "V1|" then
         if InboundAllowed(sender) then
             ProcessQuestData(sender, message)
@@ -1206,6 +1230,16 @@ local function HandlePfqeMessage(sender, message)
             if table.getn(queued) >= MAX_QUEUED_BATCHES then table.remove(queued, 1) end
             table.insert(queued, message)
             dbg("|cff33ffccpf|cffffffffQuest:|r inbound batch from " .. tostring(sender) .. " queued")
+        end
+    elseif string.sub(message or "", 1, 7) == "REMOVE:" or string.sub(message or "", 1, 6) == "QUEST:" then
+        if InboundAllowed(sender) then
+            ProcessQuestData(sender, message)
+        else
+            local queued = pendingInboundBySender[sender]
+            if not queued then queued = {} pendingInboundBySender[sender] = queued end
+            if table.getn(queued) >= MAX_QUEUED_BATCHES then table.remove(queued, 1) end
+            table.insert(queued, message)
+            dbg("|cff33ffccpf|cffffffffQuest:|r inbound legacy message from " .. tostring(sender) .. " queued")
         end
     elseif debugMode then
         dbg("|cff33ffccpf|cffffffffQuest:|r unknown pfqe batch version (" .. string.sub(message or "", 1, 6) .. ")")

@@ -154,6 +154,90 @@ function pfQuest:Debug(msg)
   pfQuest.debugwin:Show()
 end
 
+-- Support helper: dump a copy-pasteable debug log to chat. Ungated on purpose:
+-- the config button must work without enabling debug mode first.
+function pfQuest:GenerateDebugLog()
+  local _, _, _, build = GetBuildInfo()
+  print("|cff33ffccpf|cffffffffQuest Debug Log (v" .. tostring(pfQuestConfig and pfQuestConfig.version) .. "):")
+  print("Client build: " .. tostring(build) .. " | Locale: " .. tostring(GetLocale()) ..
+    " | Debug mode: " .. tostring(pfQuest_config and pfQuest_config.debug))
+  local epoch = pfQuest.partyapi
+  print("=== Addon Status ===")
+  print("pfQuest loaded: " .. tostring(IsAddOnLoaded("pfQuest")))
+  print("pfQuest-epoch loaded: " .. tostring(IsAddOnLoaded("pfQuest-epoch")))
+  print("pfDB exists: " .. tostring(pfDB ~= nil))
+  if pfDB then
+    print("  pfDB.quests exists: " .. tostring(pfDB.quests ~= nil))
+    if pfDB.quests then
+      print("  pfDB.quests.data exists: " .. tostring(pfDB.quests.data ~= nil))
+    end
+  end
+  print("pfQuestCompat exists: " .. tostring(pfQuestCompat ~= nil))
+  print("pfMap exists: " .. tostring(pfMap ~= nil))
+  print("=== Party Status ===")
+  print("Party members: " .. (GetNumPartyMembers and GetNumPartyMembers() or 0))
+  print("Feature enabled: " .. tostring(epoch and epoch.IsTooltipEnabled()))
+  print("=== Quest Data ===")
+  local MAX_DEBUG_LINES = 30
+  local printed = 0
+  local myMaps = (epoch and epoch.myQuestMappings) or {}
+  local count = 0
+  for _ in pairs(myMaps) do count = count + 1 end
+  print("myQuestMappings targets: " .. count)
+
+  local partyData = (epoch and epoch.partyQuestData) or {}
+  local partyCount = 0
+  for _ in pairs(partyData) do partyCount = partyCount + 1 end
+  print("partyQuestData players: " .. partyCount)
+
+  -- Pre-count total quest lines for accurate truncation message.
+  local totalLines = 0
+  for _, quests in pairs(myMaps) do
+    totalLines = totalLines + (#quests or 0)
+  end
+  for _, targets in pairs(partyData) do
+    for _, quests in pairs(targets) do
+      totalLines = totalLines + (#quests or 0)
+    end
+  end
+
+  local truncated = false
+  for targetKey, quests in pairs(myMaps) do
+    if printed >= MAX_DEBUG_LINES then truncated = true; break end
+    print("  |cffffcc00Target:|r " .. tostring(targetKey))
+    printed = printed + 1
+    for _, data in ipairs(quests) do
+      if printed >= MAX_DEBUG_LINES then truncated = true; break end
+      print("    - " .. tostring(data.quest) .. ": " .. tostring(data.objective) .. " (" .. tostring(data.current) .. "/" .. tostring(data.total) .. ")")
+      printed = printed + 1
+    end
+  end
+  if not truncated then
+    for playerName, targets in pairs(partyData) do
+      if printed >= MAX_DEBUG_LINES then truncated = true; break end
+      print("  |cff00ff00Player:|r " .. tostring(playerName))
+      printed = printed + 1
+      for targetKey, quests in pairs(targets) do
+        if printed >= MAX_DEBUG_LINES then truncated = true; break end
+        print("    |cffffcc00Target:|r " .. tostring(targetKey))
+        printed = printed + 1
+        for _, data in ipairs(quests) do
+          if printed >= MAX_DEBUG_LINES then truncated = true; break end
+          print("      - " .. tostring(data.quest) .. ": " .. tostring(data.objective) .. " (" .. tostring(data.current) .. "/" .. tostring(data.total) .. ")")
+          printed = printed + 1
+        end
+      end
+    end
+  end
+  if truncated then
+    print("  ...and " .. math.max(0, totalLines - MAX_DEBUG_LINES) .. " more (truncated)")
+  end
+
+  if count == 0 and partyCount == 0 then
+    print("|cffff0000No quest data found!|r Try killing a quest mob or running /pfqd after joining a party.")
+  end
+end
+
 function pfQuest:SortedPairs(t, index, reverse)
   -- collect the keys
   local keys = {}

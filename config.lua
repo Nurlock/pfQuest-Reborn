@@ -192,6 +192,9 @@ pfQuest_defconfig = {
   { text = L["Reset Quest History"], default = "1", type = "button", func = reset.history },
   { text = L["Reset Cache"], default = "1", type = "button", func = reset.cache },
   { text = L["Reset Everything"], default = "1", type = "button", func = reset.everything },
+
+  { text = L["Debug"], default = nil, type = "header" },
+  { text = L["Generate Debug Log"], default = "1", type = "button", func = function() pfQuest:GenerateDebugLog() end },
 }
 
 StaticPopupDialogs["PFQUEST_RESET"] = {

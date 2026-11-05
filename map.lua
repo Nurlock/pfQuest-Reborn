@@ -68,6 +68,10 @@ local validmaps = setmetatable({}, { __mode = "kv" })
 local rgbcache = setmetatable({}, { __mode = "kv" })
 local minimap_sizes = pfDB["minimap"]
 
+-- Memo cache for GetMapIDByName: invalidated when pfDB["zones"]["loc"] changes
+local mapIDCache = {}
+local mapIDCacheRev = nil
+
 local minimap_zoom = {
   [0] = {
     [0] = 300,
@@ -619,11 +623,23 @@ function pfMap:GetMapNameByID(id)
 end
 
 function pfMap:GetMapIDByName(search)
+  if not pfDB or not pfDB["zones"] or not pfDB["zones"]["loc"] then return nil end
+  if mapIDCacheRev ~= pfDB["zones"]["loc"] then
+    mapIDCache = {}
+    mapIDCacheRev = pfDB["zones"]["loc"]
+  end
+  local cached = mapIDCache[search]
+  if cached ~= nil then
+    return cached or nil
+  end
   for id, name in pairs(pfDB["zones"]["loc"]) do
     if name == search then
+      mapIDCache[search] = id
       return id
     end
   end
+  mapIDCache[search] = false
+  return nil
 end
 
 function pfMap:ShowMapID(map)

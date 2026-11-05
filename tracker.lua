@@ -770,6 +770,29 @@ end
 
 function tracker.RefreshZoneTracker()
   if pfQuest_config["trackingmethod"] ~= 5 then return end
+
+  -- Early skip: collapse flips that don't touch the current zone (and aren't
+  -- watched) leave the tracked set unchanged, so skip the Reset+re-add when the
+  -- zone collapse signature is unchanged and the tracker was already built.
+  local sigPieces = {}
+  local sigPlayerZone = pfMap and pfMap.playerZone
+  for sigQid, sigData in pairs(pfQuest.questlog or {}) do
+    local affects = false
+    if sigData and sigData.qlogid and IsQuestWatched(sigData.qlogid) then
+      affects = true
+    elseif sigPlayerZone and pfMap.ZoneHasQuest then
+      affects = pfMap:ZoneHasQuest(sigPlayerZone, sigQid) and true or false
+    end
+    if affects then
+      sigPieces[#sigPieces + 1] = tostring(sigQid) .. "=" .. (sigData and sigData.collapsed and 1 or 0)
+    end
+  end
+  local zoneSig = table.concat(sigPieces, ",")
+  if zoneSig == tracker._lastZoneCollapseSig and tracker._zoneBuilt then
+    return
+  end
+  tracker._lastZoneCollapseSig = zoneSig
+  tracker._zoneBuilt = true
   tracker.Reset()
 
   local seen = {}

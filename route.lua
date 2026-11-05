@@ -132,10 +132,12 @@ local function DrawLine(path, x, y, nx, ny, hl, minimap)
       end
       local nline = path.count
 
-      path[nline] = path[nline] or (minimap and pfMap.drawlayer or WorldMapButton.routes):CreateTexture(nil, "OVERLAY")
-      path[nline]:SetWidth(4)
-      path[nline]:SetHeight(4)
-      path[nline]:SetTexture(pfQuestConfig.path .. "\\img\\route")
+      if not path[nline] then
+        path[nline] = (minimap and pfMap.drawlayer or WorldMapButton.routes):CreateTexture(nil, "OVERLAY")
+        path[nline]:SetWidth(4)
+        path[nline]:SetHeight(4)
+        path[nline]:SetTexture(pfQuestConfig.path .. "\\img\\route")
+      end
       if hl and minimap then
         path[nline]:SetVertexColor(0.6, 0.4, 0.2, 0.5)
       elseif hl then
