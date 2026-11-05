@@ -104,6 +104,13 @@ local function HookGameTooltip()
         if not unitName or not unit then return end
         if UnitIsPlayer(unit) then return end
 
+        -- ShowLoots: top mob drops, independent of party sync.
+        if pfQuest_config and pfQuest_config["showloots"] ~= "0" and pfQuestLoot and pfDatabase then
+          for id in pairs(pfDatabase:GetIDByName(unitName, "units")) do
+            if pfQuestLoot.AppendTooltipLines(self, id) then break end
+          end
+        end
+
         if not pfQuest.partyapi.IsInGroup() or not pfQuest.partyapi.IsTooltipEnabled() then return end
 
         AppendPartyLines(self, BuildQuestGroups(unitName))

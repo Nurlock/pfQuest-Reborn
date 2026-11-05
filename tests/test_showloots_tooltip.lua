@@ -29,3 +29,14 @@ local lines = env.pfQuestLoot.GetTooltipLines(7001, 2)
 assert(#lines == 2, "must return top 2 lines, got " .. #lines)
 assert(lines[1].item == 101 and lines[1].chance == 80, "first line must be highest chance")
 print("  PASS: tooltip lines")
+
+-- Hook: AppendTooltipLines writes loot lines onto a tooltip frame.
+local added = {}
+local fakeTip = { AddLine = function(self, t) table.insert(added, t) end }
+env.pfQuest_config["showloots"] = "1"
+env.pfQuest_config["showlootsMaxLines"] = "5"
+assert(env.pfQuestLoot.AppendTooltipLines(fakeTip, 7001) == true, "must append lines")
+assert(#added >= 1, "tooltip must gain loot lines")
+env.pfQuest_config["showloots"] = "0"
+assert(env.pfQuestLoot.AppendTooltipLines(fakeTip, 7001) == false, "disabled toggle must skip")
+print("  PASS: hook appends lines")

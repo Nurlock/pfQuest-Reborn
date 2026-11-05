@@ -277,6 +277,24 @@ function pfQuestLoot.GetTooltipLines(unitid, maxLines)
   return lines
 end
 
+-- ShowLoots: append loot lines to a tooltip; returns true if any added.
+function pfQuestLoot.AppendTooltipLines(tooltip, unitid)
+  if not tooltip or not tooltip.AddLine then return false end
+  if pfQuest_config and pfQuest_config["showloots"] == "0" then return false end
+  local maxLines = tonumber(pfQuest_config and pfQuest_config["showlootsMaxLines"]) or 5
+  local lines = pfQuestLoot.GetTooltipLines(unitid, maxLines)
+  if not next(lines) then return false end
+  for _, l in ipairs(lines) do
+    local name = (pfDB.items.loc and pfDB.items.loc[l.item]) or ("Item:" .. l.item)
+    local r, g, b = 1, 1, 0
+    if pfMap and pfMap.tooltip and pfMap.tooltip.GetColor then
+      r, g, b = pfMap.tooltip:GetColor(tonumber(l.chance) or 0, 100)
+    end
+    tooltip:AddLine("  " .. name .. " [" .. FormatChance(l.chance) .. "]", r, g, b)
+  end
+  return true
+end
+
 local function ApplyItemVisuals(button, itemid)
   local _, _, quality = GetItemInfo(itemid)
   button.icon:SetTexture(GetItemIcon(itemid) or FALLBACK_ICON)
