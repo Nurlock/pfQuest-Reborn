@@ -34,7 +34,6 @@ function pfQuest_i18n.ApplyLanguage()
   if GetLocale then
     local loc = GetLocale()
     if loc == "ptBR" and pfQuest_I18N_ptBR then active = pfQuest_I18N_ptBR
-    elseif loc == "koKR" and pfQuest_I18N_koKR then active = pfQuest_I18N_koKR
     elseif loc == "frFR" and pfQuest_I18N_frFR then active = pfQuest_I18N_frFR
     elseif loc == "deDE" and pfQuest_I18N_deDE then active = pfQuest_I18N_deDE
     elseif loc == "zhCN" and pfQuest_I18N_zhCN then active = pfQuest_I18N_zhCN
@@ -45,7 +44,7 @@ function pfQuest_i18n.ApplyLanguage()
   end
   local override = pfQuest_config and pfQuest_config.language
   if override and override ~= "" and override ~= "auto" then
-    local all = { en = pfQuest_I18N_en, ptBR = pfQuest_I18N_ptBR, koKR = pfQuest_I18N_koKR,
+    local all = { en = pfQuest_I18N_en, ptBR = pfQuest_I18N_ptBR,
       frFR = pfQuest_I18N_frFR, deDE = pfQuest_I18N_deDE, zhCN = pfQuest_I18N_zhCN,
       zhTW = pfQuest_I18N_zhTW, esES = pfQuest_I18N_esES, ruRU = pfQuest_I18N_ruRU }
     if all[override] then active = all[override] end

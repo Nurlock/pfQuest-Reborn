@@ -60,15 +60,14 @@ local reset = {
 -- as a non-interactive accent caption and take no part in parent/child
 -- dependency logic.
 -- Language toggle: a cycle button. Only locales with real translations are
--- offered (koKR/frFR/deDE ship empty and fall back to English anyway).
+-- offered (empty locales would only fall back to English anyway).
 -- Switching reloads the UI; quest/unit names still come from the client locale.
-local langNames = { auto = "Auto", en = "English", ptBR = "Português", koKR = "한국어",
-  frFR = "Français", deDE = "Deutsch", zhCN = "简体中文", zhTW = "繁體中文", esES = "Español", ruRU = "Русский" }
-local langTables = { ptBR = pfQuest_I18N_ptBR, koKR = pfQuest_I18N_koKR, frFR = pfQuest_I18N_frFR,
-  deDE = pfQuest_I18N_deDE, zhCN = pfQuest_I18N_zhCN, zhTW = pfQuest_I18N_zhTW,
-  esES = pfQuest_I18N_esES, ruRU = pfQuest_I18N_ruRU }
+local langNames = { auto = "Auto", en = "English", ptBR = "Português", frFR = "Français",
+  deDE = "Deutsch", zhCN = "简体中文", zhTW = "繁體中文", esES = "Español", ruRU = "Русский" }
+local langTables = { ptBR = pfQuest_I18N_ptBR, frFR = pfQuest_I18N_frFR, deDE = pfQuest_I18N_deDE,
+  zhCN = pfQuest_I18N_zhCN, zhTW = pfQuest_I18N_zhTW, esES = pfQuest_I18N_esES, ruRU = pfQuest_I18N_ruRU }
 local langOrder = { "auto", "en" }
-for _, code in ipairs({ "ptBR", "koKR", "frFR", "deDE", "zhCN", "zhTW", "esES", "ruRU" }) do
+for _, code in ipairs({ "ptBR", "frFR", "deDE", "zhCN", "zhTW", "esES", "ruRU" }) do
   local t = langTables[code]
   if t then
     for _, v in pairs(t) do

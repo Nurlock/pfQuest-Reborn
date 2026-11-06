@@ -4,7 +4,6 @@
   <Include file="..\theme.lua" />
   <Include file="..\locales\en.lua" />
   <Include file="..\locales\ptBR.lua" />
-  <Include file="..\locales\koKR.lua" />
   <Include file="..\locales\frFR.lua" />
   <Include file="..\locales\deDE.lua" />
   <Include file="..\locales\zhCN.lua" />
