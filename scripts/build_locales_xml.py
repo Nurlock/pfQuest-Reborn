@@ -7,8 +7,9 @@ ElementTree so & < > in strings round-trip safely.
 """
 import glob, os, re
 import xml.etree.ElementTree as ET
-SOURCE_DIR = "locales"
-OUT_FILE = "i18n_data.lua"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SOURCE_DIR = os.path.join(BASE_DIR, "locales")
+OUT_FILE = os.path.normpath(os.path.join(BASE_DIR, "..", "i18n_data.lua"))
 
 
 def parse_android_xml(path):
