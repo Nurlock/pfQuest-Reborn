@@ -1,4 +1,0 @@
-{
-  "app": { "title": "Control Panel", "version": "v%s" },
-  "errors": { "not_found": "Error: File '%s' not found." }
-}
