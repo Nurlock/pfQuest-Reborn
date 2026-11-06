@@ -2,7 +2,15 @@
   <Include file="..\compat\pfUI.lua" />
   <Include file="..\compat\client.lua" />
   <Include file="..\theme.lua" />
-  <Include file="..\i18n_data.lua" />
+  <Include file="..\locales\en.lua" />
+  <Include file="..\locales\ptBR.lua" />
+  <Include file="..\locales\koKR.lua" />
+  <Include file="..\locales\frFR.lua" />
+  <Include file="..\locales\deDE.lua" />
+  <Include file="..\locales\zhCN.lua" />
+  <Include file="..\locales\zhTW.lua" />
+  <Include file="..\locales\esES.lua" />
+  <Include file="..\locales\ruRU.lua" />
   <Include file="..\i18n.lua" />
   <Include file="..\config.lua" />
   <Include file="..\slashcmd.lua" />

@@ -32,7 +32,9 @@ assert(env.pfQuest_Loc["Hello"] == "Bonjour", "string key must resolve via id ma
 assert(env.pfQuest_Loc["v%s"] == "v1.0" or env.pfQuest_Loc["v%s"] == "v%s", "unmapped key must echo itself")
 print("  PASS: shim")
 print("[TEST] full generated data loads under 5.1...")
-load_file("i18n_data.lua")
+for _, lang in ipairs({ "en", "ptBR", "koKR", "frFR", "deDE", "zhCN", "zhTW", "esES", "ruRU" }) do
+  load_file("locales/" .. lang .. ".lua")
+end
 assert(env.pfQuest_I18N_ENUM ~= nil, "generated enum missing")
 local n = 0
 for _ in pairs(env.pfQuest_I18N_en) do n = n + 1 end
