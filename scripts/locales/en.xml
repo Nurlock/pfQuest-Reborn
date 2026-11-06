@@ -87,6 +87,7 @@
   <string name="minimum_item_drop_chance">Minimum Item Drop Chance</string>
   <string name="mining">Mining</string>
   <string name="move_button">Move Button</string>
+  <string name="navigation">Navigation</string>
   <string name="navigation_arrow">Navigation Arrow</string>
   <string name="node_fade_transparency">Node Fade Transparency</string>
   <string name="n_a">N/A</string>

@@ -38,7 +38,7 @@ end
 assert(env.pfQuest_I18N_ENUM ~= nil, "generated enum missing")
 local n = 0
 for _ in pairs(env.pfQuest_I18N_en) do n = n + 1 end
-assert(n == 195, "expected 195 keys, got " .. n)
+assert(n == 196, "expected 196 keys, got " .. n)
 for id, txt in pairs(env.pfQuest_I18N_en) do
   for _, lang in ipairs({ "ptBR", "frFR", "deDE", "zhCN", "zhTW", "esES", "ruRU" }) do
     local t = env["pfQuest_I18N_" .. lang]

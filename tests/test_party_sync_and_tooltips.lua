@@ -202,7 +202,7 @@ for _, msg in ipairs(sentAddonMessages) do
   end
 end
 assert(foundOutboundV1, "ShareQuestData must broadcast V1 entry for U116Q100:3:10;")
-print("  \u2713 PASS: Outbound pfqe quest update correctly formatted and transmitted")
+print("  ✓ PASS: Outbound pfqe quest update correctly formatted and transmitted")
 
 print("[TEST] 4b. Verifying abandon prunes our own mirror...")
 assert(epoch.partyQuestData["LocalPlayer"] ~= nil, "self-echo must exist after share")
@@ -218,7 +218,7 @@ end
 assert(foundRemove, "abandon must broadcast REMOVEQ to peers")
 env.GetNumQuestLogEntries = function() return 1 end
 epoch.eventFrame:FireScript("OnEvent", "QUEST_LOG_UPDATE")
-print("  \u2713 PASS: Abandon prunes our mirror and notifies peers")
+print("  ✓ PASS: Abandon prunes our mirror and notifies peers")
 
 print("[TEST] 5. Verifying inbound SYNC_REQUEST is answered...")
 -- A peer that reloaded mid-party pulls; we answer with a full share.
