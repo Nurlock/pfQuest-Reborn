@@ -59,6 +59,36 @@ local reset = {
 -- Entries support type="subheader" for in-tab grouping. Sub-headers render
 -- as a non-interactive accent caption and take no part in parent/child
 -- dependency logic.
+-- Language toggle: a cycle button. Only locales with real translations are
+-- offered (koKR/frFR/deDE ship empty and fall back to English anyway).
+-- Switching reloads the UI; quest/unit names still come from the client locale.
+local langNames = { auto = "Auto", en = "English", ptBR = "Português", koKR = "한국어",
+  frFR = "Français", deDE = "Deutsch", zhCN = "简体中文", zhTW = "繁體中文", esES = "Español", ruRU = "Русский" }
+local langTables = { ptBR = pfQuest_I18N_ptBR, koKR = pfQuest_I18N_koKR, frFR = pfQuest_I18N_frFR,
+  deDE = pfQuest_I18N_deDE, zhCN = pfQuest_I18N_zhCN, zhTW = pfQuest_I18N_zhTW,
+  esES = pfQuest_I18N_esES, ruRU = pfQuest_I18N_ruRU }
+local langOrder = { "auto", "en" }
+for _, code in ipairs({ "ptBR", "koKR", "frFR", "deDE", "zhCN", "zhTW", "esES", "ruRU" }) do
+  local t = langTables[code]
+  if t then
+    for _, v in pairs(t) do
+      if v then table.insert(langOrder, code) break end
+    end
+  end
+end
+local function langLabel()
+  return langNames[(pfQuest_config and pfQuest_config.language) or "auto"] or langNames.auto
+end
+local function langCycle()
+  local cur = (pfQuest_config and pfQuest_config.language) or "auto"
+  local nxt = langOrder[1]
+  for i, code in ipairs(langOrder) do
+    if code == cur then nxt = langOrder[(i % table.getn(langOrder)) + 1] break end
+  end
+  if pfQuest_config then pfQuest_config.language = nxt end
+  if pfQuest_i18n and pfQuest_i18n.ApplyLanguage then pfQuest_i18n.ApplyLanguage() end
+  if type(ReloadUI) == "function" then ReloadUI() end
+end
 pfQuest_defconfig = {
   { -- 1: All Quests; 2: Tracked; 3: Manual; 4: Hide
     config = "trackingmethod",
@@ -178,6 +208,8 @@ pfQuest_defconfig = {
 
   { text = L["General"], default = nil, type = "header" },
   { text = L["Interface"], default = nil, type = "subheader" },
+  { text = L["Language"], default = "auto", type = "button", config = "language",
+    width = 100, label = langLabel(), func = langCycle },
   { text = L["Enable World Map Menu"], default = "1", type = "checkbox", config = "worldmapmenu" },
   { text = L["Enable Minimap Button"], default = "1", type = "checkbox", config = "minimapbutton" },
   { text = L["Enable Quest Log Buttons"], default = "1", type = "checkbox", config = "questlogbuttons" },
@@ -759,7 +791,7 @@ function pfQuestConfig:CreateConfigEntries(config)
         end)
       elseif data.type == "button" and data.func then
         frame.input = CreateFrame("Button", nil, frame)
-        frame.input:SetWidth(44)
+        frame.input:SetWidth(data.width or 44)
         frame.input:SetHeight(20)
         frame.input:SetPoint("RIGHT", -10, 0)
         frame.input:SetScript("OnClick", function()
@@ -769,7 +801,7 @@ function pfQuestConfig:CreateConfigEntries(config)
         frame.input.text = frame.input:CreateFontString("Caption", "LOW", "GameFontWhite")
         frame.input.text:SetAllPoints(frame.input)
         frame.input.text:SetFont(pfUI.font_default, pfUI_config.global.font_size, "OUTLINE")
-        frame.input.text:SetText("OK")
+        frame.input.text:SetText(data.label or "OK")
         pfUI.api.SkinButton(frame.input)
       end
 

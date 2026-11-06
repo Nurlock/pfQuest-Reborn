@@ -28,9 +28,9 @@ function pfQuest_i18n.t(id, ...)
   end
   return str_format(text, ...)
 end
-if pfQuest_I18N_en and pfQuest_I18N_STR2ID then
-  pfQuest_i18n.init(pfQuest_I18N_en, pfQuest_I18N_STR2ID)
-  local active = pfQuest_I18N_en
+function pfQuest_i18n.ApplyLanguage()
+  if not base_locale then return end
+  local active = base_locale
   if GetLocale then
     local loc = GetLocale()
     if loc == "ptBR" and pfQuest_I18N_ptBR then active = pfQuest_I18N_ptBR
@@ -43,7 +43,18 @@ if pfQuest_I18N_en and pfQuest_I18N_STR2ID then
     elseif loc == "ruRU" and pfQuest_I18N_ruRU then active = pfQuest_I18N_ruRU
     end
   end
+  local override = pfQuest_config and pfQuest_config.language
+  if override and override ~= "" and override ~= "auto" then
+    local all = { en = pfQuest_I18N_en, ptBR = pfQuest_I18N_ptBR, koKR = pfQuest_I18N_koKR,
+      frFR = pfQuest_I18N_frFR, deDE = pfQuest_I18N_deDE, zhCN = pfQuest_I18N_zhCN,
+      zhTW = pfQuest_I18N_zhTW, esES = pfQuest_I18N_esES, ruRU = pfQuest_I18N_ruRU }
+    if all[override] then active = all[override] end
+  end
   pfQuest_i18n.set_locale(active)
+end
+if pfQuest_I18N_en and pfQuest_I18N_STR2ID then
+  pfQuest_i18n.init(pfQuest_I18N_en, pfQuest_I18N_STR2ID)
+  pfQuest_i18n.ApplyLanguage()
 end
 pfQuest_Loc = setmetatable({}, {
   __index = function(tab, key)

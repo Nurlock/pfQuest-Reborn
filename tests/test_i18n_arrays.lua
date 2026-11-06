@@ -36,7 +36,7 @@ load_file("i18n_data.lua")
 assert(env.pfQuest_I18N_ENUM ~= nil, "generated enum missing")
 local n = 0
 for _ in pairs(env.pfQuest_I18N_en) do n = n + 1 end
-assert(n == 194, "expected 194 keys, got " .. n)
+assert(n == 195, "expected 195 keys, got " .. n)
 for id, txt in pairs(env.pfQuest_I18N_en) do
   for _, lang in ipairs({ "ptBR", "koKR", "frFR", "deDE", "zhCN", "zhTW", "esES", "ruRU" }) do
     local t = env["pfQuest_I18N_" .. lang]
@@ -58,4 +58,15 @@ print("[TEST] tracker uses numeric ids...")
 local src = io.open("tracker.lua", "r"):read("*a")
 assert(src:find("pfQuest_i18n.t(pfQuest_I18N_ENUM", 1, true) ~= nil, "tracker must call i18n.t with enum ids")
 print("  PASS: numeric call sites present")
+print("[TEST] language override...")
+env.pfQuest_config = { language = "esES" }
+load_file("i18n.lua")
+local es_expected = env.pfQuest_I18N_esES[close_id] or env.pfQuest_I18N_en[close_id]
+assert(env.pfQuest_Loc["Close"] == es_expected, "es override must apply")
+print("  PASS: override applies")
+print("[TEST] invalid override falls back...")
+env.pfQuest_config = { language = "xx" }
+load_file("i18n.lua")
+assert(env.pfQuest_Loc["Close"] == close_expected, "invalid override must fall back to client locale")
+print("  PASS: invalid falls back")
 print("ALL I18N TESTS PASSED")

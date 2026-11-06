@@ -15,6 +15,7 @@
 |cff33ffcc&lt;Shift-Click&gt;|r Hide Nodes</string>
   <string name="close">Close</string>
   <string name="close_reload">Close &amp; Reload</string>
+  <string name="language">Language</string>
   <string name="close_tracker">Close Tracker</string>
   <string name="color_map_nodes_by_spawn">Color Map Nodes By Spawn</string>
   <string name="combined">Combined</string>
