@@ -28,6 +28,23 @@ function pfQuest_i18n.t(id, ...)
   end
   return str_format(text, ...)
 end
+if pfQuest_I18N_en and pfQuest_I18N_STR2ID then
+  pfQuest_i18n.init(pfQuest_I18N_en, pfQuest_I18N_STR2ID)
+  local active = pfQuest_I18N_en
+  if GetLocale then
+    local loc = GetLocale()
+    if loc == "ptBR" and pfQuest_I18N_ptBR then active = pfQuest_I18N_ptBR
+    elseif loc == "koKR" and pfQuest_I18N_koKR then active = pfQuest_I18N_koKR
+    elseif loc == "frFR" and pfQuest_I18N_frFR then active = pfQuest_I18N_frFR
+    elseif loc == "deDE" and pfQuest_I18N_deDE then active = pfQuest_I18N_deDE
+    elseif loc == "zhCN" and pfQuest_I18N_zhCN then active = pfQuest_I18N_zhCN
+    elseif loc == "zhTW" and pfQuest_I18N_zhTW then active = pfQuest_I18N_zhTW
+    elseif loc == "esES" and pfQuest_I18N_esES then active = pfQuest_I18N_esES
+    elseif loc == "ruRU" and pfQuest_I18N_ruRU then active = pfQuest_I18N_ruRU
+    end
+  end
+  pfQuest_i18n.set_locale(active)
+end
 pfQuest_Loc = setmetatable({}, {
   __index = function(tab, key)
     local id = id_by_string and id_by_string[key]

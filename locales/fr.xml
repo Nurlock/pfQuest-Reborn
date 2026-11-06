@@ -1,5 +1,0 @@
-<resources>
-    <string name="app_title">Panneau de Contrôle</string>
-    <string name="app_version">v%s</string>
-    <string name="close_reload">Fechar e Recarregar</string>
-</resources>

@@ -16,7 +16,7 @@ def parse_android_xml(path):
     for elem in ET.parse(path).getroot().findall("string"):
         name = elem.get("name")
         if name and elem.text is not None:
-            entries[name.strip().upper()] = elem.text.strip()
+            entries[name.strip().upper()] = elem.text
     return entries
 
 

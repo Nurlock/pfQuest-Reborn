@@ -31,4 +31,27 @@ assert(env.pfQuest_Loc ~= nil, "compat global pfQuest_Loc must exist")
 assert(env.pfQuest_Loc["Hello"] == "Bonjour", "string key must resolve via id map")
 assert(env.pfQuest_Loc["v%s"] == "v1.0" or env.pfQuest_Loc["v%s"] == "v%s", "unmapped key must echo itself")
 print("  PASS: shim")
+print("[TEST] full generated data loads under 5.1...")
+load_file("i18n_data.lua")
+assert(env.pfQuest_I18N_ENUM ~= nil, "generated enum missing")
+local n = 0
+for _ in pairs(env.pfQuest_I18N_en) do n = n + 1 end
+assert(n == 194, "expected 194 keys, got " .. n)
+for id, txt in pairs(env.pfQuest_I18N_en) do
+  for _, lang in ipairs({ "ptBR", "koKR", "frFR", "deDE", "zhCN", "zhTW", "esES", "ruRU" }) do
+    local t = env["pfQuest_I18N_" .. lang]
+    assert(t ~= nil, "locale table missing: " .. lang)
+    assert(t[id] ~= nil, lang .. " has nil hole at id " .. id .. " (must be false)")
+  end
+end
+print("  PASS: dense arrays, no holes")
+print("[TEST] legacy string keys resolve...")
+load_file("i18n.lua")
+env.pfQuest_i18n.init(env.pfQuest_I18N_en, env.pfQuest_I18N_STR2ID)
+env.pfQuest_i18n.set_locale(env.pfQuest_I18N_frFR)
+local close_id = env.pfQuest_I18N_STR2ID["Close"]
+assert(close_id ~= nil, "Close must have an id")
+local close_expected = env.pfQuest_I18N_frFR[close_id] or env.pfQuest_I18N_en[close_id]
+assert(env.pfQuest_Loc["Close"] == close_expected, "fr Close must match (or fall back to en)")
+print("  PASS: legacy keys resolve")
 print("ALL I18N TESTS PASSED")
