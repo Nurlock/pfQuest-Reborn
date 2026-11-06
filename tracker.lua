@@ -307,19 +307,19 @@ do -- button panel
     return b
   end
 
-  tracker.btnquest = CreateButton("quests", "TOPLEFT", pfQuest_Loc["Show Current Quests"], function()
+  tracker.btnquest = CreateButton("quests", "TOPLEFT", pfQuest_i18n.t(pfQuest_I18N_ENUM.SHOW_CURRENT_QUESTS), function()
     tracker.mode = "QUEST_TRACKING"
     UpdateSortButton()
     pfMap:UpdateNodes()
   end)
 
-  tracker.btndatabase = CreateButton("database", "TOPLEFT", pfQuest_Loc["Show Database Results"], function()
+  tracker.btndatabase = CreateButton("database", "TOPLEFT", pfQuest_i18n.t(pfQuest_I18N_ENUM.SHOW_DATABASE_RESULTS), function()
     tracker.mode = "DATABASE_TRACKING"
     UpdateSortButton()
     pfMap:UpdateNodes()
   end)
 
-  tracker.btngiver = CreateButton("giver", "TOPLEFT", pfQuest_Loc["Show Quest Givers"], function()
+  tracker.btngiver = CreateButton("giver", "TOPLEFT", pfQuest_i18n.t(pfQuest_I18N_ENUM.SHOW_QUEST_GIVERS), function()
     tracker.mode = "GIVER_TRACKING"
     UpdateSortButton()
     pfMap:UpdateNodes()
@@ -353,25 +353,25 @@ do -- button panel
     pfMap:RequestUpdate()
   end)
 
-  tracker.btnclose = CreateButton("close", "TOPRIGHT", pfQuest_Loc["Close Tracker"], function()
+  tracker.btnclose = CreateButton("close", "TOPRIGHT", pfQuest_i18n.t(pfQuest_I18N_ENUM.CLOSE_TRACKER), function()
     DEFAULT_CHAT_FRAME:AddMessage(
-      pfQuest_Loc["|cff33ffccpf|cffffffffQuest: Tracker is now hidden. Type `/db tracker` to show."]
+      pfQuest_i18n.t(pfQuest_I18N_ENUM.PFQUEST_TRACKER_IS_NOW_HIDDEN_TYPE_DB_TRACKER_TO_SHOW)
     )
     tracker:Hide()
   end)
 
-  tracker.btnsettings = CreateButton("settings", "TOPRIGHT", pfQuest_Loc["Open Settings"], function()
+  tracker.btnsettings = CreateButton("settings", "TOPRIGHT", pfQuest_i18n.t(pfQuest_I18N_ENUM.OPEN_SETTINGS), function()
     if pfQuestConfig then
       pfQuestConfig:Show()
     end
   end)
 
-  tracker.btnclean = CreateButton("clean", "TOPRIGHT", pfQuest_Loc["Clean Database Results"], function()
+  tracker.btnclean = CreateButton("clean", "TOPRIGHT", pfQuest_i18n.t(pfQuest_I18N_ENUM.CLEAN_DATABASE_RESULTS), function()
     pfMap:DeleteNode("PFDB")
     pfMap:UpdateNodes()
   end)
 
-  tracker.btnsearch = CreateButton("search", "TOPRIGHT", pfQuest_Loc["Open Database Browser"], function()
+  tracker.btnsearch = CreateButton("search", "TOPRIGHT", pfQuest_i18n.t(pfQuest_I18N_ENUM.OPEN_DATABASE_BROWSER), function()
     if pfBrowser then
       pfBrowser:Show()
     end

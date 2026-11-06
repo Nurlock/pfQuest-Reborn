@@ -54,4 +54,8 @@ assert(close_id ~= nil, "Close must have an id")
 local close_expected = env.pfQuest_I18N_frFR[close_id] or env.pfQuest_I18N_en[close_id]
 assert(env.pfQuest_Loc["Close"] == close_expected, "fr Close must match (or fall back to en)")
 print("  PASS: legacy keys resolve")
+print("[TEST] tracker uses numeric ids...")
+local src = io.open("tracker.lua", "r"):read("*a")
+assert(src:find("pfQuest_i18n.t(pfQuest_I18N_ENUM", 1, true) ~= nil, "tracker must call i18n.t with enum ids")
+print("  PASS: numeric call sites present")
 print("ALL I18N TESTS PASSED")
