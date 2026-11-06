@@ -3,6 +3,7 @@
   <Include file="..\compat\client.lua" />
   <Include file="..\theme.lua" />
   <Include file="..\locales.lua" />
+  <Include file="..\i18n.lua" />
   <Include file="..\config.lua" />
   <Include file="..\slashcmd.lua" />
   <Include file="..\database.lua" />
