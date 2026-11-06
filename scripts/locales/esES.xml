@@ -72,6 +72,7 @@
   <string name="items">Objetos</string>
   <string name="journal">Diario</string>
   <string name="kill_s">Mata |cff33ffcc%s|r</string>
+  <string name="language">Idioma</string>
   <string name="left_click">Clic izquierdo</string>
   <string name="level">Nivel</string>
   <string name="locales">Lugares</string>
@@ -86,6 +87,7 @@
   <string name="minimum_item_drop_chance">Probabilidad mínima de caída de objetos</string>
   <string name="mining">Minar</string>
   <string name="move_button">Mover botón</string>
+  <string name="navigation">Navegación</string>
   <string name="navigation_arrow">Flecha de Navegación</string>
   <string name="node_fade_transparency">Transparencia de desvanecimiento de nodos</string>
   <string name="n_a">N/D</string>
@@ -129,6 +131,7 @@
   <string name="respawn">Reaparición</string>
   <string name="right_click">Clic derecho</string>
   <string name="routes">Rutas</string>
+  <string name="save_close">Guardar y cerrar</string>
   <string name="scanning_server_for_items">Escaneando el servidor por objetos...</string>
   <string name="scan_the_server_for_custom_items">Escanear el servidor en busca de elementos personalizados</string>
   <string name="search">Buscar</string>
@@ -153,6 +156,7 @@
   <string name="show_help_on_tooltips">Mostrar ayuda en el cuadro de texto</string>
   <string name="show_herbs_with_an_appropriate_skill_level_for_your_characte">Muestra hierbas con un nivel de habilidad apropiado para tu personaje</string>
   <string name="show_herbs_with_skill_range_of_min_to_max">Mostrar hierbas con rango de habilidad de [min] a [max]</string>
+  <string name="show_individual_spawn_points">Mostrar puntos de aparición individuales</string>
   <string name="show_level_on_quest_log">Mostrar el nivel en el registro de misiones</string>
   <string name="show_level_on_quest_tracker">Mostrar el nivel en el rastreador de misiones</string>
   <string name="show_map_tracker">Mostrar rastreador de mapa</string>
@@ -179,6 +183,7 @@
   <string name="translate">Translate</string>
   <string name="trigger">Disparador</string>
   <string name="type">Tipo</string>
+  <string name="unified_quest_location_markers">Marcadores de ubicación de misión unificados</string>
   <string name="unit">Unidad</string>
   <string name="units">Unidades</string>
   <string name="user_data">Datos de Usuario</string>
@@ -191,6 +196,7 @@
   <string name="use_s_at_s">utilizar |cff33ffcc%s|r en |cff33ffcc%s|r</string>
   <string name="use_s_on_s">utilizar |cff33ffcc%s|r sobre |cff33ffcc%s|r</string>
   <string name="vendor">Vendedor</string>
+  <string name="welcome_screen">Pantalla de bienvenida</string>
   <string name="world_map_node_transparency">Transparencia de los nodos del Mapa del Mundo</string>
   <string name="you_already_did_this_quest">Ya completas esta misión</string>
   <string name="you_are_on_this_quest">Misión en progresa</string>

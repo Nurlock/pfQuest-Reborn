@@ -27,6 +27,7 @@
   <string name="current_zone">Текущая зона</string>
   <string name="custom_items_loaded">пользовательские предметы загружены.</string>
   <string name="display_addon_locales">Показать используемые языки в базе данных</string>
+  <string name="display_all_spawn_points_of_each_quest_objective_and_hide_su">Показать все точки появления каждой цели квеста и скрыть обобщённые значки групп.</string>
   <string name="display_available_quest_givers">Показать доступных квестодателей</string>
   <string name="display_current_quest_givers">Показать квестодателей текущих заданий</string>
   <string name="display_event_daily_quests">Показать задания событий и ежедневные</string>
@@ -72,6 +73,7 @@
   <string name="items">Предметы</string>
   <string name="journal">Журнал</string>
   <string name="kill_s">Убейте |cff33ffcc%s|r</string>
+  <string name="language">Язык</string>
   <string name="left_click">Левый-Клик</string>
   <string name="level">Уровень</string>
   <string name="locales">Языки</string>
@@ -87,12 +89,14 @@
 выпадения не ниже</string>
   <string name="mining">Горное дело</string>
   <string name="move_button">Перемещение кнопки</string>
+  <string name="navigation">Навигация</string>
   <string name="navigation_arrow">Навигационная стрелка</string>
   <string name="node_fade_transparency">Прозрачность при затухании узла</string>
   <string name="n_a">Н/Д</string>
   <string name="object">Объект</string>
   <string name="objects">Объекты</string>
   <string name="online_search">Поиск онлайн</string>
+  <string name="only_show_cluster_icons_with_summarized_objective_locations_">Показывать только значки групп с обобщёнными целями на основе точек появления</string>
   <string name="open_browser">Открыть базу данных</string>
   <string name="open_configuration">Открыть настройки</string>
   <string name="open_database_browser">Открыть базу данных</string>
@@ -129,6 +133,7 @@
   <string name="respawn">Перерождение</string>
   <string name="right_click">Правый-Клик</string>
   <string name="routes">Маршруты</string>
+  <string name="save_close">Сохранить и закрыть</string>
   <string name="scanning_server_for_items">Сканирование предметов сервера...</string>
   <string name="scan_the_server_for_custom_items">Сканировать сервер для добавления нестандартных предметов</string>
   <string name="search">Поиск</string>
@@ -144,16 +149,20 @@
   <string name="show_all_rare_mobs_of_level_min_to_max">Показать всех редких мобов уровней [min] - [max]</string>
   <string name="show_all_taxi_nodes_of_faction">Показать на карте всех распорядителей полетов для фракции {horde, alliance}</string>
   <string name="show_arrow_along_routes">Показать стрелку вдоль маршрутов</string>
+  <string name="show_cluster_icons_with_summarized_locations_and_also_displa">Показывать значки групп с обобщёнными местоположениями, а также все точки появления каждой цели квеста</string>
   <string name="show_configuration_interface">Показать настройки</string>
   <string name="show_current_quests">Показать текущие задания</string>
   <string name="show_database_ids">Показать ID</string>
   <string name="show_database_interface">Показать базу данных</string>
   <string name="show_database_results">Показать результаты базы данных</string>
   <string name="show_help_on_tooltips">Показать справку в подсказках</string>
+  <string name="show_herbs_with_an_appropriate_skill_level_for_your_characte">Показывать травы с подходящим уровнем навыка для вашего персонажа</string>
   <string name="show_herbs_with_skill_range_of_min_to_max">Показать травы с диапазоном навыка [min] - [max]</string>
+  <string name="show_individual_spawn_points">Показать отдельные точки появления</string>
   <string name="show_level_on_quest_log">Показать уровень в журнале заданий</string>
   <string name="show_level_on_quest_tracker">Показать уровень в трекере</string>
   <string name="show_map_tracker">Показать трекер карты</string>
+  <string name="show_mines_with_an_appropriate_skill_level_for_your_characte">Показывать руду с подходящим уровнем навыка для вашего персонажа</string>
   <string name="show_mines_with_skill_range_of_min_to_max">Показать жилы с диапазоном навыка [min] - [max]</string>
   <string name="show_navigation_arrow">Показать стрелку навигации</string>
   <string name="show_navigation_arrow_that_points_you_to_the_nearest_quest_l">Покажите стрелку навигации, указывающую на ближайшее место квеста.</string>
@@ -176,6 +185,7 @@
   <string name="translate">Перевод</string>
   <string name="trigger">Триггер</string>
   <string name="type">Тип</string>
+  <string name="unified_quest_location_markers">Объединённые маркеры местоположений квестов</string>
   <string name="unit">Юнит</string>
   <string name="units">Юниты</string>
   <string name="user_data">Данные пользователя</string>
@@ -188,6 +198,7 @@
   <string name="use_s_at_s">Используйте |cff33ffcc%s|r у |cff33ffcc%s|r</string>
   <string name="use_s_on_s">Используйте |cff33ffcc%s|r на |cff33ffcc%s|r</string>
   <string name="vendor">Торговец</string>
+  <string name="welcome_screen">Экран приветствия</string>
   <string name="world_map_node_transparency">Прозрачность узлов на карте мира</string>
   <string name="you_already_did_this_quest">Вы уже выполнили это задание.</string>
   <string name="you_are_on_this_quest">Вы выполняете это задание.</string>

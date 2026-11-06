@@ -87,6 +87,7 @@
   <string name="minimum_item_drop_chance">Chance d'obtention minimale</string>
   <string name="mining">Minage</string>
   <string name="move_button">Déplacer le bouton</string>
+  <string name="navigation">Navigation</string>
   <string name="navigation_arrow">Flèche de navigation</string>
   <string name="node_fade_transparency">Transparence du fondu des nœuds</string>
   <string name="n_a">N/D</string>

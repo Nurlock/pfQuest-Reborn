@@ -72,6 +72,7 @@
   <string name="items">Itens</string>
   <string name="journal">Diário</string>
   <string name="kill_s">Matar |cff33ffcc%s|r</string>
+  <string name="language">Idioma</string>
   <string name="left_click">Clique Esquerdo</string>
   <string name="level">Nível</string>
   <string name="locales">Traduções</string>
@@ -86,6 +87,7 @@
   <string name="minimum_item_drop_chance">Probabilidade Mínima de Queda do Item</string>
   <string name="mining">Mineração</string>
   <string name="move_button">Mover Botão</string>
+  <string name="navigation">Navegação</string>
   <string name="navigation_arrow">Seta de Navegação</string>
   <string name="node_fade_transparency">Transparência do Nó Esmaecido</string>
   <string name="n_a">N/A</string>
@@ -154,6 +156,7 @@
   <string name="show_help_on_tooltips">Mostrar Ajuda na Ferramenta de Dicas</string>
   <string name="show_herbs_with_an_appropriate_skill_level_for_your_characte">Mostrar ervas com um nível de habilidade adequado ao seu personagem</string>
   <string name="show_herbs_with_skill_range_of_min_to_max">Mostrar ervas com nível de habilidade de [min] a [max]</string>
+  <string name="show_individual_spawn_points">Mostrar Locais de Reaparecimento Individuais</string>
   <string name="show_level_on_quest_log">Mostrar Nível no Registro de Missões</string>
   <string name="show_level_on_quest_tracker">Mostrar Nível no Rastreador de Missões</string>
   <string name="show_map_tracker">Mostrar rastreador no mapa</string>
@@ -181,6 +184,7 @@ Reaparecimento</string>
   <string name="translate">Traduzir</string>
   <string name="trigger">Gatilho</string>
   <string name="type">Tipo</string>
+  <string name="unified_quest_location_markers">Marcadores Unificados de Localização de Missão</string>
   <string name="unit">Unidade</string>
   <string name="units">Unidades</string>
   <string name="user_data">Dados de Usuário</string>

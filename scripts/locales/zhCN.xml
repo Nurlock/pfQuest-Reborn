@@ -72,6 +72,7 @@
   <string name="items">物品</string>
   <string name="journal">日志</string>
   <string name="kill_s">击杀 |cff33ffcc%s|r</string>
+  <string name="language">语言</string>
   <string name="left_click">鼠标左键-单击</string>
   <string name="level">等级</string>
   <string name="locales">本地化文本</string>
@@ -86,6 +87,7 @@
   <string name="minimum_item_drop_chance">物品的基础掉落几率</string>
   <string name="mining">采矿</string>
   <string name="move_button">移动按钮</string>
+  <string name="navigation">导航</string>
   <string name="navigation_arrow">导航箭头</string>
   <string name="node_fade_transparency">节点的渐隐透明度</string>
   <string name="n_a">无</string>
@@ -194,6 +196,7 @@
   <string name="use_s_at_s">在|cff33ffcc%s|r使用|cff33ffcc%s|r</string>
   <string name="use_s_on_s">对|cff33ffcc%s|r使用|cff33ffcc%s|r</string>
   <string name="vendor">商人</string>
+  <string name="welcome_screen">欢迎界面</string>
   <string name="world_map_node_transparency">世界地图节点的透明度</string>
   <string name="you_already_did_this_quest">你已经做过这个任务了</string>
   <string name="you_are_on_this_quest">你正在做这个任务</string>

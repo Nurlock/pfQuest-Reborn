@@ -87,6 +87,7 @@
   <string name="minimum_item_drop_chance">Minimale Droprate</string>
   <string name="mining">Bergbau</string>
   <string name="move_button">Button verschieben</string>
+  <string name="navigation">Navigation</string>
   <string name="navigation_arrow">Navigationspfeil</string>
   <string name="node_fade_transparency">Transparenz beim Ausblenden der Symbole</string>
   <string name="n_a">k. A.</string>
