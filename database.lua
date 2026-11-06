@@ -1905,11 +1905,13 @@ function pfDatabase:SearchQuestID(id, meta, maps)
     if quests[id]["end"] and meta["addon"] ~= "PARTY" then
       -- compute complete state once, outside both ender loops
       local ender_texture
+      local ender_pending = true
       if meta["qlogid"] then
         local _, _, _, _, _, complete = compat.GetQuestLogTitle(meta["qlogid"])
         complete = complete or GetNumQuestLeaderBoards(meta["qlogid"]) == 0 and true or nil
         ender_texture = (complete == true or complete == 1) and pfQuestConfig.path .. "\\img\\complete_c"
           or pfQuestConfig.path .. "\\img\\complete"
+        ender_pending = not complete
         else
           ender_texture = pfQuestConfig.path .. "\\img\\complete_c"
       end
@@ -1919,6 +1921,7 @@ function pfDatabase:SearchQuestID(id, meta, maps)
         for _, unit in pairs(quests[id]["end"]["U"]) do
           meta["texture"] = ender_texture
           meta["QTYPE"] = "NPC_END"
+          meta["ender"] = ender_pending or nil
           maps = pfDatabase:SearchMobID(unit, meta, maps, 0)
         end
       end
@@ -1928,10 +1931,13 @@ function pfDatabase:SearchQuestID(id, meta, maps)
         for _, object in pairs(quests[id]["end"]["O"]) do
           meta["texture"] = ender_texture
           meta["QTYPE"] = "OBJECT_END"
+          meta["ender"] = ender_pending or nil
           maps = pfDatabase:SearchObjectID(object, meta, maps, 0)
         end
       end
     end
+    -- enders share meta with the objective branches below; clear the flag
+    meta["ender"] = nil
   end
 
   -- Clear and reuse the module-level parse_obj table

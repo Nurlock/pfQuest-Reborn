@@ -137,6 +137,8 @@ function M.create_env()
     function f:ClearAllPoints() self._points = {} end
     function f:SetAllPoints() end
     function f:EnableMouse(b) self._mouseEnabled = (b ~= false) end
+    function f:RegisterForDrag(...) self._dragButton = arg and arg[1] end
+    function f:EnableMouseWheel(b) self._mouseWheelEnabled = (b ~= false) end
     function f:IsMouseEnabled() return self._mouseEnabled end
     function f:Enable() self._enabled = true end
     function f:Disable() self._enabled = false end

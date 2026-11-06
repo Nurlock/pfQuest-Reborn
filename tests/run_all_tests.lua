@@ -5,6 +5,7 @@
 local suites = {
   "tests/test_questgiver_lifecycle.lua",
   "tests/test_objective_parsing.lua",
+  "tests/test_ender_route_priority.lua",
   "tests/test_metadata_isolation.lua",
   "tests/test_delete_node_fallback.lua",
   "tests/test_performance_guards.lua",

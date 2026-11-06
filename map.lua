@@ -1616,6 +1616,7 @@ function pfMap:UpdateNode(frame, node, color, obj, distance)
       frame.quest = tab.quest
       frame.qlvl = tab.qlvl
       frame.itemreq = tab.itemreq
+      frame.ender = tab.ender
       frame.arrow = tab.arrow
       frame.icon = tab.icon
       frame.fade_range = tab.fade_range

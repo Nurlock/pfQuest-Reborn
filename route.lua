@@ -234,9 +234,19 @@ local DIST_FAR = 99999999
 -- sortfunc wrapper reads the hoisted sortCache instead; refresh once per sort.
 local sortCache = { mode5 = false, sortMode = nil }
 local function sortfuncCached(a, b, mode5, sortMode)
+  -- Premature turn-ins sink below everything actionable, within and across
+  -- quests: the ender is always rendered, so at pickup it sits at distance ~0
+  -- and would otherwise beat the actionable kill on distance alone. Only
+  -- incomplete turn-ins are flagged (database.lua), so ready turn-ins still
+  -- compete on distance.
+  -- Route tuples are { x, y, node, distance, watched, questid }
+  local a_end = (a[3] and a[3].ender) and 1 or 0
+  local b_end = (b[3] and b[3].ender) and 1 or 0
+  if a_end ~= b_end then
+    return a_end < b_end
+  end
   -- For the same quest, gathering/source objectives must always be prioritized
   -- before using the item at an itemreq target node.
-  -- Route tuples are { x, y, node, distance, watched, questid }
   if a[6] and b[6] and a[6] == b[6] then
     local a_req = (a[3] and a[3].itemreq) and 1 or 0
     local b_req = (b[3] and b[3].itemreq) and 1 or 0
@@ -288,6 +298,8 @@ end
 local function sortfunc(a, b)
   return sortfuncCached(a, b, sortCache.mode5, sortCache.sortMode)
 end
+-- Exposed for the regression suite (the comparator is pure on its inputs).
+pfQuest.route.sortfunc = sortfunc
 pfQuest.route:SetScript("OnUpdate", function()
   local xplayer, yplayer = GetPlayerMapPosition("player")
   local wrongmap = xplayer == 0 and yplayer == 0 and true or nil
