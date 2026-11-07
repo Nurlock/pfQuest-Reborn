@@ -300,6 +300,36 @@ local function sortfunc(a, b)
 end
 -- Exposed for the regression suite (the comparator is pure on its inputs).
 pfQuest.route.sortfunc = sortfunc
+
+-- Arrow hysteresis margin, in route distance units: the current target keeps
+-- the arrow until a challenger beats it by more than this, so standing
+-- between two objectives doesn't flicker the arrow every step.
+local ARROW_STICKINESS = 1
+
+-- Returns the tuple that should lead coords: the previous best while it is
+-- still listed (matched by quest and position, not identity, so pin rebuilds
+-- don't reset it) and no challenger beats it by more than ARROW_STICKINESS.
+-- Exposed for the regression suite (pure on its inputs).
+local function stabilizeBest(coords, oldBest)
+  local newBest = coords[1]
+  if not oldBest or oldBest == newBest then return newBest end
+  local oldIdx = nil
+  for id, data in ipairs(coords) do
+    if data[6] == oldBest[6] and data[1] == oldBest[1] and data[2] == oldBest[2] then
+      oldIdx = id
+      break
+    end
+  end
+  if not oldIdx then return newBest end
+  local listed = coords[oldIdx]
+  if oldIdx > 1 and (newBest[4] or 0) > (listed[4] or 0) - ARROW_STICKINESS then
+    table.remove(coords, oldIdx)
+    table.insert(coords, 1, listed)
+    return listed
+  end
+  return newBest
+end
+pfQuest.route.stabilizeBest = stabilizeBest
 pfQuest.route:SetScript("OnUpdate", function()
   local xplayer, yplayer = GetPlayerMapPosition("player")
   local wrongmap = xplayer == 0 and yplayer == 0 and true or nil
@@ -352,6 +382,14 @@ pfQuest.route:SetScript("OnUpdate", function()
         local item = table.remove(this.coords, target)
         table.insert(this.coords, 1, item)
       end
+    end
+
+    -- arrow hysteresis: keep the current target until a challenger is clearly
+    -- nearer, so standing between two objectives doesn't flicker the arrow.
+    -- Skipped while distances are meaningless (wrongmap keeps the old best)
+    -- and while the user pinned an explicit custom target (that choice wins).
+    if not wrongmap and this.coords[1] and not targetTitle then
+      this.arrowBest = stabilizeBest(this.coords, this.arrowBest)
     end
 
     this.recalculate = GetTime() + 1
