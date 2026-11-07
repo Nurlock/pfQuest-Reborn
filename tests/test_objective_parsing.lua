@@ -310,4 +310,96 @@ assert(env.pfMap.nodes["PFQUEST"][1]["40|40"],
   "Partial stack (1/3 held) MUST keep its loot source!")
 print("  ✓ PASS: Partial multi-count stack keeps farming")
 
+print("[TEST] Objective parsing scenario: use-counted line matches nothing (26939)...")
+-- live client line: "Joseph Strinbrows's spirit laid to rest: 0/1", tagged monster,
+-- while the quest has no kill objectives at all.
+env.pfMap:DeleteNode("PFQUEST", "Partial Stack Quest")
+local peaceId = 604
+env.pfDB.quests.data[peaceId] = {
+  lvl = 5, min = 3,
+  ["obj"] = { ["O"] = { 250365 }, ["I"] = { 62811 }, ["IR"] = { 62811 } },
+}
+env.pfDB.quests.loc[peaceId] = { T = "Peace in Death" }
+env.pfDB.items.data[62811] = { ["O"] = { [250600] = 100 } }
+env.pfDB.items.loc[62811] = "Joseph's Watch"
+env.pfDB.objects.data[250365] = { coords = { { 41.0, 41.0, 1, 0 } }, fac = "A" }
+env.pfDB.objects.loc[250365] = "Joseph's Grave Dummy"
+env.pfDB.objects.data[250600] = { coords = { { 42.0, 42.0, 1, 0 } }, fac = "A" }
+env.pfDB.objects.loc[250600] = "Joseph's Watch"
+env.pfDB["quests-itemreq"].data[62811] = { [-250365] = 0 }
+env.pfDatabase:BuildNameIndex()
+env.pfDatabase:BuildStaticRejectSet()
+-- watch held: container source hides, gated dummy shows
+env.pfDatabase.itemlist.db = { [62811] = true, ["Joseph's Watch"] = true }
+env.SetMockQuestLog({
+  [1] = {
+    id = peaceId,
+    title = "Peace in Death",
+    isComplete = false,
+    objectives = {
+      [1] = { text = "Joseph Strinbrows's spirit laid to rest: 0/1", type = "monster", done = nil },
+    }
+  }
+})
+env.pfDatabase:SearchQuestID(peaceId, { ["addon"] = "PFQUEST", ["qlogid"] = 1 })
+assert(not env.pfMap.nodes["PFQUEST"][1]["42|42"],
+  "Held single-use item MUST hide its container source!")
+assert(env.pfMap.nodes["PFQUEST"][1]["41|41"],
+  "Gated dummy MUST show while the watch is held!")
+local dummyGated = false
+for _, m in pairs(env.pfMap.nodes["PFQUEST"][1]["41|41"]) do
+  if m.itemreq then dummyGated = true end
+end
+assert(dummyGated, "Dummy pin MUST carry the itemreq flag!")
+print("  ✓ PASS: Unmatched use line hides the source, dummy takes over")
+
+print("[TEST] Objective parsing scenario: same quest, watch still missing...")
+env.pfMap:DeleteNode("PFQUEST", "Peace in Death")
+env.pfDatabase.itemlist.db = {}
+env.SetMockQuestLog({
+  [1] = {
+    id = peaceId,
+    title = "Peace in Death",
+    isComplete = false,
+    objectives = {
+      [1] = { text = "Joseph Strinbrows's spirit laid to rest: 0/1", type = "monster", done = nil },
+    }
+  }
+})
+env.pfDatabase:SearchQuestID(peaceId, { ["addon"] = "PFQUEST", ["qlogid"] = 1 })
+assert(env.pfMap.nodes["PFQUEST"][1]["42|42"],
+  "Missing watch MUST keep its container source!")
+assert(not env.pfMap.nodes["PFQUEST"][1]["41|41"],
+  "Ungated dummy MUST stay hidden while the watch is missing!")
+print("  ✓ PASS: Missing watch keeps the source, dummy stays hidden")
+
+print("[TEST] Objective parsing scenario: monster line with kills around is not stolen...")
+env.pfMap:DeleteNode("PFQUEST", "Peace in Death")
+-- same unmatched monster line, but the quest HAS kill objectives: the IR
+-- fallback must not steal it for the item.
+local guardId = 605
+env.pfDB.quests.data[guardId] = {
+  lvl = 5, min = 3,
+  ["obj"] = { ["U"] = { 1004, 1005 }, ["I"] = { 3004 }, ["IR"] = { 3004 } },
+}
+env.pfDB.quests.loc[guardId] = { T = "Guarded Quest" }
+env.pfDB["quests-itemreq"].data[3004] = { [-2002] = 0 }
+env.pfDatabase:BuildNameIndex()
+env.pfDatabase:BuildStaticRejectSet()
+env.pfDatabase.itemlist.db = { [3004] = true, ["Wolf Meat"] = true }
+env.SetMockQuestLog({
+  [1] = {
+    id = guardId,
+    title = "Guarded Quest",
+    isComplete = false,
+    objectives = {
+      [1] = { text = "Something slain: 0/1", type = "monster", done = nil },
+    }
+  }
+})
+env.pfDatabase:SearchQuestID(guardId, { ["addon"] = "PFQUEST", ["qlogid"] = 1 })
+assert(env.pfMap.nodes["PFQUEST"][1]["40|40"],
+  "Monster line with kills around MUST NOT hide the item source!")
+print("  ✓ PASS: Kill lines stay kill lines")
+
 print("[TEST] test_objective_parsing PASSED successfully!")

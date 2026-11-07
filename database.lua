@@ -1879,7 +1879,7 @@ end
 -- Guessing is safe only with exactly one candidate.
 local function attributeLine(parse, kind, ids, locTbl, objName, text, status, lineType, wantType, objNeeded)
   local need = (kind == "I" and objNeeded) and tonumber(objNeeded) or nil
-  local target, count = nil, 0
+  local target, count, matched = nil, 0, false
   for _, id in ipairs(ids) do
     count = count + 1
     target = id
@@ -1887,13 +1887,15 @@ local function attributeLine(parse, kind, ids, locTbl, objName, text, status, li
     if locName and (locName == objName or (objName and strfind(objName, locName, 1, true)) or (text and strfind(text, locName, 1, true))) then
       parse[kind][id] = status
       if need then parse_need[id] = need end
-      target = nil
+      target, matched = nil, true
     end
   end
   if target and count == 1 and lineType == wantType then
     parse[kind][target] = status
     if need then parse_need[target] = need end
+    matched = true
   end
+  return matched
 end
 
 function pfDatabase:SearchQuestID(id, meta, maps)
@@ -2060,18 +2062,26 @@ function pfDatabase:SearchQuestID(id, meta, maps)
         local status = objComplete(objNum, objNeeded, done) and "DONE" or "PROG"
 
         -- match one line against units (name first, type-tagged sole fallback)
-        if q_obj["U"] then
-          attributeLine(parse_obj, "U", q_obj["U"], pfDB.units.loc, objName, text, status, type, "monster", objNeeded)
-        end
+        local matchedU = q_obj["U"] and attributeLine(parse_obj, "U", q_obj["U"], pfDB.units.loc, objName, text, status, type, "monster", objNeeded)
 
         -- match one line against objects (name first, type-tagged sole fallback)
-        if q_obj["O"] then
-          attributeLine(parse_obj, "O", q_obj["O"], pfDB.objects.loc, objName, text, status, type, "object", objNeeded)
-        end
+        local matchedO = q_obj["O"] and attributeLine(parse_obj, "O", q_obj["O"], pfDB.objects.loc, objName, text, status, type, "object", objNeeded)
 
         -- match one line against items (name first, type-tagged sole fallback)
-        if q_obj["I"] then
-          attributeLine(parse_obj, "I", q_obj["I"], pfDB.items.loc, objName, text, status, type, "item", objNeeded)
+        local matchedI = q_obj["I"] and attributeLine(parse_obj, "I", q_obj["I"], pfDB.items.loc, objName, text, status, type, "item", objNeeded)
+
+        -- A use-counted line ("laid to rest", "buried") can match nothing while the
+        -- quest's only step is its required item. Hand it to the sole IR item so a
+        -- held single-use item hides its source; a monster line with kills around
+        -- stays a kill line and never gets stolen.
+        local hasU = q_obj["U"] and q_obj["U"][1] ~= nil
+        if not (matchedU or matchedO or matchedI) and q_obj["IR"] then
+          local soleIR, irCount = nil, 0
+          for _, item in pairs(q_obj["IR"]) do soleIR, irCount = item, irCount + 1 end
+          if irCount == 1 and soleIR and (not hasU or type ~= "monster") then
+            parse_obj["I"][soleIR] = status
+            if objNeeded then parse_need[soleIR] = tonumber(objNeeded) end
+          end
         end
       end
     end

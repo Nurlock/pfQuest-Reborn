@@ -193,4 +193,27 @@ assert(sf(tup({}, 0.5, 6395), tup({}, 6.5, 640)) == true,
   "Completed turn-in MUST stay routable by distance")
 print("  ✓ PASS: no regressions")
 
+print("[TEST] Arrow hysteresis: current target sticks inside the margin...")
+local stab = env.pfQuest.route.stabilizeBest
+assert(stab, "stabilizeBest must be exposed for the suite")
+local dummy = { 30.7, 65.2, {}, 5.0, nil, 26939 }
+local armband = { 23.1, 59.8, {}, 5.4, nil, 604 }
+local coords = { armband, dummy } -- sorted: challenger first, inside the margin
+local best = stab(coords, dummy)
+assert(best == dummy and coords[1] == dummy,
+  "Current target MUST stick while the challenger is inside the margin")
+armband[4] = 3.0 -- challenger clearly nearer: more than a margin ahead
+coords = { armband, dummy }
+best = stab(coords, dummy)
+assert(best == armband and coords[1] == armband,
+  "Clearly nearer challenger MUST take over")
+coords = { armband } -- old target gone from the map
+best = stab(coords, dummy)
+assert(best == armband,
+  "Vanished target MUST hand over immediately")
+best = stab({ armband, dummy }, nil) -- no history yet
+assert(best == armband,
+  "No history MUST keep the sorted winner")
+print("  ✓ PASS: arrow hysteresis")
+
 print("[TEST] test_ender_route_priority PASSED successfully!")
