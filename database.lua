@@ -712,6 +712,25 @@ pfDatabase:BuildNameIndex()
 
 -- Reusable parse_obj table (cleared and reused each SearchQuestID call)
 local parse_obj = { ["U"] = {}, ["O"] = {}, ["I"] = {} }
+-- Parsed required counts for item objectives (same lifecycle as parse_obj).
+-- Lets the item branch tell a held single-use item (no more farming needed)
+-- apart from a partially farmed multi-count one (sources must stay).
+local parse_need = {}
+local function clear_parse_obj()
+  for k in pairs(parse_obj["U"]) do
+    parse_obj["U"][k] = nil
+  end
+  for k in pairs(parse_obj["O"]) do
+    parse_obj["O"][k] = nil
+  end
+  for k in pairs(parse_obj["I"]) do
+    parse_obj["I"][k] = nil
+  end
+  for k in pairs(parse_need) do
+    parse_need[k] = nil
+  end
+end
+local parse_obj = { ["U"] = {}, ["O"] = {}, ["I"] = {} }
 local function clear_parse_obj()
   for k in pairs(parse_obj["U"]) do
     parse_obj["U"][k] = nil
@@ -1853,6 +1872,44 @@ function pfDatabase:SearchItemQuestStarters(id, itemIds, meta, maps)
   return maps
 end
 
+-- If a client-tagged leaderboard line ("monster"/"object"/"item") matched nothing
+-- by name, attribute its status to the quest's sole objective of that kind.
+-- Client text often names the source instead of the objective; guessing is
+-- safe only with exactly one candidate, otherwise the line stays unattributed.
+local function attributeUnmatched(parse, kind, ids, locTbl, objName, text, status, lineType, wantType, objNeeded)
+  if lineType ~= wantType then return end
+  for _, id in ipairs(ids) do
+    local locName = locTbl and locTbl[id]
+    if locName and (locName == objName or (objName and strfind(objName, locName, 1, true)) or (text and strfind(text, locName, 1, true))) then
+      return
+    end
+  end
+  local count, sole = 0, nil
+  for _, id in ipairs(ids) do
+    count = count + 1
+    sole = id
+  end
+  if count == 1 and sole then
+    parse[kind][sole] = status
+    if kind == "I" and objNeeded then parse_need[sole] = tonumber(objNeeded) end
+  end
+  if lineType ~= wantType then return end
+  for _, id in ipairs(ids) do
+    local locName = locTbl and locTbl[id]
+    if locName and (locName == objName or (objName and strfind(objName, locName, 1, true)) or (text and strfind(text, locName, 1, true))) then
+      return
+    end
+  end
+  local count, sole = 0, nil
+  for _, id in ipairs(ids) do
+    count = count + 1
+    sole = id
+  end
+  if count == 1 and sole then
+    parse[kind][sole] = status
+  end
+end
+
 function pfDatabase:SearchQuestID(id, meta, maps)
   if not quests[id] then
     return
@@ -2024,6 +2081,7 @@ function pfDatabase:SearchQuestID(id, meta, maps)
               parse_obj["U"][uid] = status
             end
           end
+          attributeUnmatched(parse_obj, "U", q_obj["U"], pfDB.units.loc, objName, text, status, type, "monster", objNeeded)
         end
 
         -- match against objects
@@ -2034,6 +2092,7 @@ function pfDatabase:SearchQuestID(id, meta, maps)
               parse_obj["O"][oid] = status
             end
           end
+          attributeUnmatched(parse_obj, "O", q_obj["O"], pfDB.objects.loc, objName, text, status, type, "object", objNeeded)
         end
 
         -- match against items
@@ -2042,8 +2101,10 @@ function pfDatabase:SearchQuestID(id, meta, maps)
             local locName = pfDB.items.loc[iid]
             if locName and (locName == objName or (objName and strfind(objName, locName, 1, true)) or (text and strfind(text, locName, 1, true))) then
               parse_obj["I"][iid] = status
+              if objNeeded then parse_need[iid] = tonumber(objNeeded) end
             end
           end
+          attributeUnmatched(parse_obj, "I", q_obj["I"], pfDB.items.loc, objName, text, status, type, "item", objNeeded)
         end
       end
     end
@@ -2091,8 +2152,10 @@ function pfDatabase:SearchQuestID(id, meta, maps)
               pfDatabase:TrackQuestItemDependency(requirement, id)
               pfDatabase:TrackQuestItemDependency(item, id)
               local hasItem = pfDatabase.itemlist.db[requirement] or pfDatabase.itemlist.db[item]
-              local isDone = not parse_obj["I"][item] or parse_obj["I"][item] == "DONE"
-              local showItemReq = (not meta["qlogid"]) or (hasItem and isDone)
+              -- Show the use-target as soon as the item is held: for use-counted
+              -- objectives (e.g. 6395's "Buried: 0/1") the count only completes AT
+              -- the target, so requiring DONE would hide the very pin to reach.
+              local showItemReq = (not meta["qlogid"]) or hasItem
               if showItemReq then
                 maps = pfDatabase:SearchObjectID(math.abs(object), meta, maps)
               end
@@ -2109,8 +2172,8 @@ function pfDatabase:SearchQuestID(id, meta, maps)
               pfDatabase:TrackQuestItemDependency(requirement, id)
               pfDatabase:TrackQuestItemDependency(item, id)
               local hasItem = pfDatabase.itemlist.db[requirement] or pfDatabase.itemlist.db[item]
-              local isDone = not parse_obj["I"][item] or parse_obj["I"][item] == "DONE"
-              local showItemReq = (not meta["qlogid"]) or (hasItem and isDone)
+              -- Same possession rule as the gameobject branch above.
+              local showItemReq = (not meta["qlogid"]) or hasItem
               if showItemReq then
                 maps = pfDatabase:SearchMobID(math.abs(object), meta, maps)
               end
@@ -2156,7 +2219,12 @@ function pfDatabase:SearchQuestID(id, meta, maps)
     if quests[id]["obj"]["I"] then
       meta.itemreq = nil
       for _, item in pairs(quests[id]["obj"]["I"]) do
-        if not parse_obj["I"][item] or parse_obj["I"][item] ~= "DONE" then
+        -- A held single-use item needs no more farming: the remaining step is its
+        -- use-target (rendered by the IR branch above), not its loot source.
+        -- Multi-count objectives keep their sources (partial stacks still need work).
+        local singleHeld = parse_need[item] == 1
+          and (pfDatabase.itemlist.db[item] or pfDatabase.itemlist.db[pfDB["items"]["loc"][item]])
+        if (not parse_obj["I"][item] or parse_obj["I"][item] ~= "DONE") and not singleHeld then
           meta = meta or {}
           meta["texture"] = nil
           meta["layer"] = 2

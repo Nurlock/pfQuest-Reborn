@@ -1051,6 +1051,10 @@ do -- welcome/init popup dialog
   end)
 
   pfQuestInit:SetScript("OnShow", function()
+    -- Re-run every compatibility helper on each wizard run (first and manual).
+    if pfQuestCompat and pfQuestCompat.compatibilityCheck then
+      pfQuestCompat.compatibilityCheck()
+    end
     -- reload ui elements
     if pfQuestInit[1] and pfQuestInit[1].bg then desaturate(pfQuestInit[1].bg, true) end
     if pfQuestInit[2] and pfQuestInit[2].bg then desaturate(pfQuestInit[2].bg, true) end

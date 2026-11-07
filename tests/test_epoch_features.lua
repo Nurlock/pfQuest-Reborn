@@ -208,6 +208,31 @@ env.pfQuestNameplates.Scan()
 assert(env.pfQuestNameplates.questObjectives["Defias Captain"] ~= nil, "Defias Captain must have a quest icon")
 print("  ✓ PASS: Nameplate quest objectives scanned and mapped")
 
+print("[TEST] Verifying external nameplate addon compatibility...")
+load_file("compatibility.lua")
+local compatNotice = nil
+env.DEFAULT_CHAT_FRAME = { AddMessage = function(_, msg) compatNotice = msg end }
+-- DragonUI detected on a wizard run: the setting flips off, with a notice
+env.pfQuest_config["epochnameplatesEnabled"] = "1"
+env.IsAddOnLoaded = function(name) return name == "DragonUI" end
+env.pfQuestCompat.compatibilityCheck()
+assert(env.pfQuest_config["epochnameplatesEnabled"] == "0", "DragonUI detected: setting must switch off on wizard run")
+assert(compatNotice and string.find(compatNotice, "external nameplate addon"), "Must tell the user why icons went off")
+-- already off: a later wizard run stays silent and changes nothing
+compatNotice = nil
+env.IsAddOnLoaded = function(name) return name == "Nameplates" end
+env.pfQuestCompat.compatibilityCheck()
+assert(env.pfQuest_config["epochnameplatesEnabled"] == "0", "Setting must stay off")
+assert(compatNotice == nil, "Already off: must stay silent")
+-- neither addon: the setting is untouched
+env.pfQuest_config["epochnameplatesEnabled"] = "1"
+env.IsAddOnLoaded = function(name) return false end
+env.pfQuestCompat.compatibilityCheck()
+assert(env.pfQuest_config["epochnameplatesEnabled"] == "1", "No external addon: setting must stay on")
+print("  ✓ PASS: External nameplate addon compatibility verified")
+env.IsAddOnLoaded = nil
+env.DEFAULT_CHAT_FRAME = nil
+
 print("[TEST] Verifying Continent Map coordinate transformation...")
 load_file("continent.lua")
 assert(env.pfQuestContinent ~= nil, "pfQuestContinent must be defined")

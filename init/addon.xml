@@ -21,6 +21,7 @@
   <Include file="..\tracker.lua" />
   <Include file="..\browser.lua" />
   <Include file="..\lootpanel.lua" />
+  <Include file="..\compatibility.lua" />
   <Include file="..\nameplates.lua" />
   <Include file="..\continent.lua" />
   <Include file="..\automation.lua" />

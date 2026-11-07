@@ -152,4 +152,132 @@ assert(not env.pfMap.nodes["PFQUEST"] or not env.pfMap.nodes["PFQUEST"][1] or no
 assert(env.pfMap.nodes["PFQUEST"][1]["36|36"], "Only Garrick Padfoot drop node should remain")
 print("  ✓ PASS: Non-slain verb ('healed') properly parsed as DONE and node removed")
 
+print("[TEST] Objective parsing scenario: use-counted objective (6395's Buried: 0/1)...")
+env.pfMap:DeleteNode("PFQUEST", "Multi-Objective Test Quest")
+
+-- 6395 shape, from the live client: the line counts burials, not possession,
+-- is tagged "object", and names the item ("Samuel's Remains Buried: 0/1").
+local graveId = 600
+env.pfDB.quests.data[graveId] = {
+  lvl = 5, min = 3,
+  ["start"] = { ["U"] = { 823 } },
+  ["end"] = { ["U"] = { 823 } },
+  ["obj"] = { ["O"] = { 2002 }, ["I"] = { 3002 }, ["IR"] = { 3002 } },
+}
+env.pfDB.quests.loc[graveId] = { T = "Remains to the Grave" }
+env.pfDB.items.data[3002] = { ["U"] = { [3003] = 100 } }
+env.pfDB.items.loc[3002] = "Samuel's Remains"
+env.pfDB.units.data[3003] = { coords = { { 36.0, 36.0, 1, 0 } }, fac = "A" }
+env.pfDB.units.loc[3003] = "Samuel Fipps"
+env.pfDB.objects.data[2002] = { coords = { { 31.0, 31.0, 1, 0 } }, fac = "A" }
+env.pfDB.objects.loc[2002] = "Marla's Grave"
+env.pfDB["quests-itemreq"].data = { [3002] = { [-2002] = 0 } }
+env.pfDatabase:Reload()
+env.pfDatabase:BuildNameIndex()
+env.pfDatabase:BuildStaticRejectSet()
+
+-- remains in bags, nothing buried yet: ghoul hides, gated grave shows
+env.pfDatabase.itemlist.db = { [3002] = true, ["Samuel's Remains"] = true }
+env.SetMockQuestLog({
+  [1] = {
+    id = graveId,
+    title = "Remains to the Grave",
+    isComplete = false,
+    objectives = {
+      [1] = { text = "Samuel's Remains Buried: 0/1", type = "object", done = nil },
+    }
+  }
+})
+env.pfDatabase:SearchQuestID(graveId, { ["addon"] = "PFQUEST", ["qlogid"] = 1 })
+assert(not env.pfMap.nodes["PFQUEST"][1]["36|36"],
+  "Held single-use item MUST hide its loot source!")
+assert(env.pfMap.nodes["PFQUEST"][1]["31|31"],
+  "Gated use-target MUST show while the remains are held!")
+local gated = false
+for _, m in pairs(env.pfMap.nodes["PFQUEST"][1]["31|31"]) do
+  if m.itemreq then gated = true end
+end
+assert(gated, "Grave pin MUST carry the itemreq flag!")
+print("  ✓ PASS: Held item hides the source, gated grave takes over")
+
+print("[TEST] Objective parsing scenario: same quest, remains still missing...")
+env.pfMap:DeleteNode("PFQUEST", "Remains to the Grave")
+env.pfDatabase.itemlist.db = {}
+env.SetMockQuestLog({
+  [1] = {
+    id = graveId,
+    title = "Remains to the Grave",
+    isComplete = false,
+    objectives = {
+      [1] = { text = "Samuel's Remains Buried: 0/1", type = "object", done = nil },
+    }
+  }
+})
+env.pfDatabase:SearchQuestID(graveId, { ["addon"] = "PFQUEST", ["qlogid"] = 1 })
+assert(env.pfMap.nodes["PFQUEST"][1]["36|36"],
+  "Incomplete item line MUST still show its loot source!")
+assert(not env.pfMap.nodes["PFQUEST"][1]["31|31"],
+  "Ungated use-target MUST stay hidden while the remains are missing!")
+print("  ✓ PASS: Incomplete line keeps the source, grave stays hidden")
+
+print("[TEST] Objective parsing scenario: type-tagged lines for kills and objects...")
+local typeId = 601
+env.pfDB.quests.data[typeId] = {
+  lvl = 5, min = 3,
+  ["obj"] = { ["U"] = { 1004 }, ["O"] = { 2003 } },
+}
+env.pfDB.quests.loc[typeId] = { T = "Short-Named Objectives" }
+env.pfDB.units.data[1004] = { coords = { { 37.0, 37.0, 1, 0 } }, fac = "A" }
+env.pfDB.units.loc[1004] = "Tarren Mill Peasant"
+env.pfDB.objects.data[2003] = { coords = { { 38.0, 38.0, 1, 0 } }, fac = "A" }
+env.pfDB.objects.loc[2003] = "Northshire Water Valve"
+env.pfDatabase:BuildNameIndex()
+env.pfDatabase:BuildStaticRejectSet()
+env.SetMockQuestLog({
+  [1] = {
+    id = typeId,
+    title = "Short-Named Objectives",
+    isComplete = false,
+    objectives = {
+      [1] = { text = "Peasant slain: 1/1", type = "monster", done = 1 },
+      [2] = { text = "Valve turned: 1/1", type = "object", done = 1 },
+    }
+  }
+})
+env.pfDatabase:SearchQuestID(typeId, { ["addon"] = "PFQUEST", ["qlogid"] = 1 })
+assert(not env.pfMap.nodes["PFQUEST"][1]["37|37"],
+  "Completed monster line (type-tagged) MUST hide its mob!")
+assert(not env.pfMap.nodes["PFQUEST"][1]["38|38"],
+  "Completed object line (type-tagged) MUST hide its object!")
+print("  ✓ PASS: Type-tagged kill and object lines hide their sources")
+
+print("[TEST] Objective parsing scenario: several candidates, no guessing...")
+env.pfMap:DeleteNode("PFQUEST", "Short-Named Objectives")
+local multiId = 602
+env.pfDB.quests.data[multiId] = {
+  lvl = 5, min = 3,
+  ["obj"] = { ["U"] = { 1004, 1005 } },
+}
+env.pfDB.quests.loc[multiId] = { T = "Ambiguous Objectives" }
+env.pfDB.units.data[1005] = { coords = { { 39.0, 39.0, 1, 0 } }, fac = "A" }
+env.pfDB.units.loc[1005] = "Other Mob"
+env.pfDatabase:BuildNameIndex()
+env.pfDatabase:BuildStaticRejectSet()
+env.SetMockQuestLog({
+  [1] = {
+    id = multiId,
+    title = "Ambiguous Objectives",
+    isComplete = false,
+    objectives = {
+      [1] = { text = "Something slain: 1/1", type = "monster", done = 1 },
+    }
+  }
+})
+env.pfDatabase:SearchQuestID(multiId, { ["addon"] = "PFQUEST", ["qlogid"] = 1 })
+assert(env.pfMap.nodes["PFQUEST"][1]["37|37"],
+  "Ambiguous line MUST NOT hide the first candidate!")
+assert(env.pfMap.nodes["PFQUEST"][1]["39|39"],
+  "Ambiguous line MUST NOT hide the second candidate!")
+print("  ✓ PASS: Multi-candidate lines stay unattributed")
+
 print("[TEST] test_objective_parsing PASSED successfully!")
