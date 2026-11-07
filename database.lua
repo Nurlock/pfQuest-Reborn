@@ -1872,41 +1872,27 @@ function pfDatabase:SearchItemQuestStarters(id, itemIds, meta, maps)
   return maps
 end
 
--- If a client-tagged leaderboard line ("monster"/"object"/"item") matched nothing
--- by name, attribute its status to the quest's sole objective of that kind.
--- Client text often names the source instead of the objective; guessing is
--- safe only with exactly one candidate, otherwise the line stays unattributed.
-local function attributeUnmatched(parse, kind, ids, locTbl, objName, text, status, lineType, wantType, objNeeded)
-  if lineType ~= wantType then return end
-  for _, id in ipairs(ids) do
-    local locName = locTbl and locTbl[id]
-    if locName and (locName == objName or (objName and strfind(objName, locName, 1, true)) or (text and strfind(text, locName, 1, true))) then
-      return
-    end
-  end
-  local count, sole = 0, nil
+-- Match one leaderboard line against the quest's objectives of one kind, by
+-- name first. If a client-tagged line ("monster"/"object"/"item") matched
+-- nothing by name (client text often names the source instead of the
+-- objective), attribute its status to the sole candidate of that kind.
+-- Guessing is safe only with exactly one candidate.
+local function attributeLine(parse, kind, ids, locTbl, objName, text, status, lineType, wantType, objNeeded)
+  local need = (kind == "I" and objNeeded) and tonumber(objNeeded) or nil
+  local target, count = nil, 0
   for _, id in ipairs(ids) do
     count = count + 1
-    sole = id
-  end
-  if count == 1 and sole then
-    parse[kind][sole] = status
-    if kind == "I" and objNeeded then parse_need[sole] = tonumber(objNeeded) end
-  end
-  if lineType ~= wantType then return end
-  for _, id in ipairs(ids) do
+    target = id
     local locName = locTbl and locTbl[id]
     if locName and (locName == objName or (objName and strfind(objName, locName, 1, true)) or (text and strfind(text, locName, 1, true))) then
-      return
+      parse[kind][id] = status
+      if need then parse_need[id] = need end
+      target = nil
     end
   end
-  local count, sole = 0, nil
-  for _, id in ipairs(ids) do
-    count = count + 1
-    sole = id
-  end
-  if count == 1 and sole then
-    parse[kind][sole] = status
+  if target and count == 1 and lineType == wantType then
+    parse[kind][target] = status
+    if need then parse_need[target] = need end
   end
 end
 
@@ -2073,38 +2059,19 @@ function pfDatabase:SearchQuestID(id, meta, maps)
 
         local status = objComplete(objNum, objNeeded, done) and "DONE" or "PROG"
 
-        -- match against units
+        -- match one line against units (name first, type-tagged sole fallback)
         if q_obj["U"] then
-          for _, uid in ipairs(q_obj["U"]) do
-            local locName = pfDB.units.loc[uid]
-            if locName and (locName == objName or (objName and strfind(objName, locName, 1, true)) or (text and strfind(text, locName, 1, true))) then
-              parse_obj["U"][uid] = status
-            end
-          end
-          attributeUnmatched(parse_obj, "U", q_obj["U"], pfDB.units.loc, objName, text, status, type, "monster", objNeeded)
+          attributeLine(parse_obj, "U", q_obj["U"], pfDB.units.loc, objName, text, status, type, "monster", objNeeded)
         end
 
-        -- match against objects
+        -- match one line against objects (name first, type-tagged sole fallback)
         if q_obj["O"] then
-          for _, oid in ipairs(q_obj["O"]) do
-            local locName = pfDB.objects.loc[oid]
-            if locName and (locName == objName or (objName and strfind(objName, locName, 1, true)) or (text and strfind(text, locName, 1, true))) then
-              parse_obj["O"][oid] = status
-            end
-          end
-          attributeUnmatched(parse_obj, "O", q_obj["O"], pfDB.objects.loc, objName, text, status, type, "object", objNeeded)
+          attributeLine(parse_obj, "O", q_obj["O"], pfDB.objects.loc, objName, text, status, type, "object", objNeeded)
         end
 
-        -- match against items
+        -- match one line against items (name first, type-tagged sole fallback)
         if q_obj["I"] then
-          for _, iid in ipairs(q_obj["I"]) do
-            local locName = pfDB.items.loc[iid]
-            if locName and (locName == objName or (objName and strfind(objName, locName, 1, true)) or (text and strfind(text, locName, 1, true))) then
-              parse_obj["I"][iid] = status
-              if objNeeded then parse_need[iid] = tonumber(objNeeded) end
-            end
-          end
-          attributeUnmatched(parse_obj, "I", q_obj["I"], pfDB.items.loc, objName, text, status, type, "item", objNeeded)
+          attributeLine(parse_obj, "I", q_obj["I"], pfDB.items.loc, objName, text, status, type, "item", objNeeded)
         end
       end
     end
@@ -2222,8 +2189,10 @@ function pfDatabase:SearchQuestID(id, meta, maps)
         -- A held single-use item needs no more farming: the remaining step is its
         -- use-target (rendered by the IR branch above), not its loot source.
         -- Multi-count objectives keep their sources (partial stacks still need work).
+        -- A missing name row (locale gap) must not crash the bag lookup.
+        local itemName = pfDB["items"]["loc"][item] or UNKNOWN
         local singleHeld = parse_need[item] == 1
-          and (pfDatabase.itemlist.db[item] or pfDatabase.itemlist.db[pfDB["items"]["loc"][item]])
+          and (pfDatabase.itemlist.db[item] or pfDatabase.itemlist.db[itemName])
         if (not parse_obj["I"][item] or parse_obj["I"][item] ~= "DONE") and not singleHeld then
           meta = meta or {}
           meta["texture"] = nil

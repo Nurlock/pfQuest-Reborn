@@ -280,4 +280,34 @@ assert(env.pfMap.nodes["PFQUEST"][1]["39|39"],
   "Ambiguous line MUST NOT hide the second candidate!")
 print("  ✓ PASS: Multi-candidate lines stay unattributed")
 
+print("[TEST] Objective parsing scenario: partial multi-count stack keeps its source...")
+local partialId = 603
+env.pfDB.quests.data[partialId] = {
+  lvl = 5, min = 3,
+  ["obj"] = { ["I"] = { 3004 } },
+}
+env.pfDB.quests.loc[partialId] = { T = "Partial Stack Quest" }
+env.pfDB.items.data[3004] = { ["U"] = { [3005] = 100 } }
+env.pfDB.items.loc[3004] = "Wolf Meat"
+env.pfDB.units.data[3005] = { coords = { { 40.0, 40.0, 1, 0 } }, fac = "A" }
+env.pfDB.units.loc[3005] = "Starving Wolf"
+env.pfDatabase:BuildNameIndex()
+env.pfDatabase:BuildStaticRejectSet()
+-- holding 1 of 3: the single-use hide MUST NOT fire
+env.pfDatabase.itemlist.db = { [3004] = true, ["Wolf Meat"] = true }
+env.SetMockQuestLog({
+  [1] = {
+    id = partialId,
+    title = "Partial Stack Quest",
+    isComplete = false,
+    objectives = {
+      [1] = { text = "Wolf Meat: 1/3", type = "item", done = nil },
+    }
+  }
+})
+env.pfDatabase:SearchQuestID(partialId, { ["addon"] = "PFQUEST", ["qlogid"] = 1 })
+assert(env.pfMap.nodes["PFQUEST"][1]["40|40"],
+  "Partial stack (1/3 held) MUST keep its loot source!")
+print("  ✓ PASS: Partial multi-count stack keeps farming")
+
 print("[TEST] test_objective_parsing PASSED successfully!")
