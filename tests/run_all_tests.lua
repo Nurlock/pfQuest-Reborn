@@ -15,6 +15,7 @@ local suites = {
   "tests/test_epoch_features.lua",
   "tests/test_showloots_tooltip.lua",
   "tests/test_audit_fixes.lua",
+  "tests/test_quest_types_coverage.lua",
   "tests/test_i18n_arrays.lua",
 }
 
