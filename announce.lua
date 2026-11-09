@@ -13,17 +13,20 @@ local objectiveCache = {}
 
 local function GetQuestNameForObjective(objectiveName)
   local numQuestLogEntries = GetNumQuestLogEntries and GetNumQuestLogEntries() or 0
-  for i = 1, numQuestLogEntries do
-    local questTitle, _, _, _, isHeader = GetQuestLogTitle(i)
-    if not isHeader and questTitle then
-      local numObjectives = GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(i) or 0
-      for j = 1, numObjectives do
-        local description = GetQuestLogLeaderBoard(j, i)
-        if description then
-          local objName = string.match(description, "(.*):%s*[-%d]+%s*/%s*[-%d]+%s*$")
-          if objName and string.find(string.lower(objName), string.lower(objectiveName), 1, true) then
-            local link = GetQuestLink and GetQuestLink(i)
-            return link or questTitle
+  for pass = 1, 2 do
+    for i = 1, numQuestLogEntries do
+      local questTitle, _, _, _, isHeader = GetQuestLogTitle(i)
+      if not isHeader and questTitle then
+        local numObjectives = GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(i) or 0
+        for j = 1, numObjectives do
+          local description = GetQuestLogLeaderBoard(j, i)
+          if description then
+            local objName = string.match(description, "(.*):%s*[-%d]+%s*/%s*[-%d]+%s*$")
+            if objName and (string.lower(objName) == string.lower(objectiveName)
+                or pass == 2 and string.find(string.lower(objName), string.lower(objectiveName), 1, true)) then
+              local link = GetQuestLink and GetQuestLink(i)
+              return link or questTitle
+            end
           end
         end
       end
@@ -34,24 +37,27 @@ end
 
 local function GetItemIdForObjective(objectiveName)
   local numQuestLogEntries = GetNumQuestLogEntries and GetNumQuestLogEntries() or 0
-  for i = 1, numQuestLogEntries do
-    local questTitle, _, _, _, isHeader = GetQuestLogTitle(i)
-    if not isHeader and questTitle then
-      local numObjectives = GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(i) or 0
-      for j = 1, numObjectives do
-        local description = GetQuestLogLeaderBoard(j, i)
-        if description then
-          local objName = string.match(description, "(.*):%s*[-%d]+%s*/%s*[-%d]+%s*$")
-          if objName and string.find(string.lower(objName), string.lower(objectiveName), 1, true) then
-            local link = GetQuestLink and GetQuestLink(i)
-            local questId = link and tonumber(string.match(link, "quest:(%d+)"))
-            if questId and pfDB and pfDB["quests"] and pfDB["quests"]["data"] then
-              local qData = pfDB["quests"]["data"][questId]
-              if qData and qData["obj"] and qData["obj"]["I"] then
-                for _, itemId in pairs(qData["obj"]["I"]) do
-                  local iname = GetItemInfo(itemId)
-                  if iname and string.find(string.lower(objectiveName), string.lower(iname), 1, true) then
-                    return itemId
+  for pass = 1, 2 do
+    for i = 1, numQuestLogEntries do
+      local questTitle, _, _, _, isHeader = GetQuestLogTitle(i)
+      if not isHeader and questTitle then
+        local numObjectives = GetNumQuestLeaderBoards and GetNumQuestLeaderBoards(i) or 0
+        for j = 1, numObjectives do
+          local description = GetQuestLogLeaderBoard(j, i)
+          if description then
+            local objName = string.match(description, "(.*):%s*[-%d]+%s*/%s*[-%d]+%s*$")
+            if objName and (string.lower(objName) == string.lower(objectiveName)
+                or pass == 2 and string.find(string.lower(objName), string.lower(objectiveName), 1, true)) then
+              local link = GetQuestLink and GetQuestLink(i)
+              local questId = link and tonumber(string.match(link, "quest:(%d+)"))
+              if questId and pfDB and pfDB["quests"] and pfDB["quests"]["data"] then
+                local qData = pfDB["quests"]["data"][questId]
+                if qData and qData["obj"] and qData["obj"]["I"] then
+                  for _, itemId in pairs(qData["obj"]["I"]) do
+                    local iname = GetItemInfo(itemId)
+                    if iname and string.find(string.lower(objectiveName), string.lower(iname), 1, true) then
+                      return itemId
+                    end
                   end
                 end
               end
@@ -194,6 +200,7 @@ frame:RegisterEvent("QUEST_LOG_UPDATE")
 frame:SetScript("OnEvent", function(self, event, msg)
   if event == "QUEST_LOG_UPDATE" then
     objectiveCache = {}
+    objectiveState = {}
   elseif event == "UI_INFO_MESSAGE" and msg then
     pfQuestAnnounce.OnQuestUpdate(msg)
   end

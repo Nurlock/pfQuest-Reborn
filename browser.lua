@@ -570,7 +570,7 @@ local function SelectView(view)
 end
 
 -- sets the browser result values when they change
-local function RefreshView(i, key, caption)
+local function RefreshView(i, key, caption, truncated)
   pfBrowser.tabs[key].list:Hide()
   pfBrowser.tabs[key].list:SetHeight(i * 30)
   pfBrowser.tabs[key].list:Show()
@@ -587,14 +587,14 @@ local function RefreshView(i, key, caption)
     )
   end
 
-  if i >= search_limit then
+  if truncated then
     pfBrowser.tabs[key].list.warn:Show()
   else
     pfBrowser.tabs[key].list.warn:Hide()
   end
 
   pfBrowser.tabs[key].button:SetText(
-    pfQuest_Loc[caption] .. " " .. "|cffaaaaaa(" .. (i >= search_limit and "*" or i) .. ")"
+    pfQuest_Loc[caption] .. " " .. "|cffaaaaaa(" .. (truncated and "*" or i) .. ")"
   )
   for j = i + 1, table.getn(pfBrowser.tabs[key].buttons) do
     if pfBrowser.tabs[key].buttons[j] then
@@ -673,11 +673,43 @@ function pfBrowser:SearchText(t)
   self:Show()
   self.input:SetText(t)
 end
+-- Favorites-on-login needs its own shown driver: pfBrowser is hidden at
+-- creation and WoW skips OnUpdate on hidden frames, so the queue would sit
+-- until the player opened the window (nameplates ticker pattern).
+local favdriver = CreateFrame("Frame")
+favdriver:Hide()
+favdriver:SetScript("OnUpdate", function(self, elapsed)
+  self.elapsed = (self.elapsed or 0) + (elapsed or 0)
+  if self.elapsed < 0.1 then
+    return
+  end
+  self.elapsed = 0
+
+  local entry = pfBrowser.favqueue and table.remove(pfBrowser.favqueue, 1)
+  if not entry then
+    pfBrowser.favqueue = nil
+    self:Hide()
+    return
+  end
+
+  local ftype, id = entry[1], entry[2]
+  if ftype == "units" then
+    pfDatabase:SearchMobID(id)
+  elseif ftype == "objects" then
+    pfDatabase:SearchObjectID(id)
+  elseif ftype == "items" then
+    pfDatabase:SearchItemID(id)
+  elseif ftype == "quests" then
+    pfDatabase:SearchQuestID(id)
+  end
+  pfMap:RequestUpdate()
+end)
+
 pfBrowser:RegisterEvent("PLAYER_ENTERING_WORLD")
 pfBrowser:SetScript("OnEvent", function()
   -- queue favorites for incremental processing rather than running all
   -- Search*ID calls synchronously in one PLAYER_ENTERING_WORLD frame.
-  -- each entry is drained one per OnUpdate tick (see OnUpdate below).
+  -- each entry is drained one per 0.1s by favdriver (shown when filled).
   if pfQuest_config.favonlogin == "1" then
     pfBrowser.favqueue = {}
     for id, name in pairs(pfBrowser_fav.units) do
@@ -691,6 +723,9 @@ pfBrowser:SetScript("OnEvent", function()
     end
     for id, name in pairs(pfBrowser_fav.quests) do
       table.insert(pfBrowser.favqueue, { "quests", id })
+    end
+    if table.getn(pfBrowser.favqueue) > 0 then
+      favdriver:Show()
     end
   end
 end)
@@ -717,14 +752,6 @@ pfBrowser:SetScript("OnSizeChanged", function()
         tab.list:SetWidth(w - 40)
       end
     end
-  end
-end)
-
-pfBrowser:SetScript("OnShow", function()
-  local size = pfQuest_config and pfQuest_config.browsersize
-  if size and size[1] and size[2] then
-    this:SetWidth(size[1])
-    this:SetHeight(size[2])
   end
 end)
 
@@ -915,6 +942,18 @@ pfBrowser.input:SetScript("OnTextChanged", function()
   searchPending = true
 end)
 
+-- OnShow lives here, after `searchPending` is declared: a closure can't
+-- capture a local defined below it. Queues the first paint (captions, lists,
+-- favorites) on open instead of waiting for the first keystroke.
+pfBrowser:SetScript("OnShow", function()
+  local size = pfQuest_config and pfQuest_config.browsersize
+  if size and size[1] and size[2] then
+    this:SetWidth(size[1])
+    this:SetHeight(size[2])
+  end
+  searchPending = true
+end)
+
 -- Deferred search runner: fires at most once per 0.5s after the last keystroke.
 -- Scanning the database four times synchronously on every keystroke caused
 -- visible stuttering; this collapses rapid typing into a single search.
@@ -925,25 +964,6 @@ pfBrowser:SetScript("OnUpdate", function()
     return
   end
   this.elapsed = 0
-
-  -- drain one favorite search per tick to spread login cost across frames
-  if pfBrowser.favqueue and table.getn(pfBrowser.favqueue) > 0 then
-    local entry = table.remove(pfBrowser.favqueue, 1)
-    local ftype, id = entry[1], entry[2]
-    if ftype == "units" then
-      pfDatabase:SearchMobID(id)
-    end
-    if ftype == "objects" then
-      pfDatabase:SearchObjectID(id)
-    end
-    if ftype == "items" then
-      pfDatabase:SearchItemID(id)
-    end
-    if ftype == "quests" then
-      pfDatabase:SearchQuestID(id)
-    end
-    pfMap:RequestUpdate()
-  end
 
   -- run pending search once debounce interval has elapsed
   if searchPending then
@@ -962,11 +982,13 @@ pfBrowser:SetScript("OnUpdate", function()
           or pfBrowser_fav[searchType]
 
         local i = 0
+        local truncated
         for id, text in pairs(data) do
-          i = i + 1
           if i >= search_limit then
+            truncated = true
             break
           end
+          i = i + 1
           pfBrowser.tabs[searchType].buttons[i] = pfBrowser.tabs[searchType].buttons[i]
             or ResultButtonCreate(i, searchType)
           pfBrowser.tabs[searchType].buttons[i].id = id
@@ -974,7 +996,7 @@ pfBrowser:SetScript("OnUpdate", function()
           pfBrowser.tabs[searchType].buttons[i]:Reload()
         end
 
-        RefreshView(i, searchType, caption)
+        RefreshView(i, searchType, caption, truncated)
       end
     end
   else

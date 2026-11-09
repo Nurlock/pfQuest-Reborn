@@ -218,6 +218,10 @@ local function FindMappedQuestId(questTitle)
     return nil
 end
 
+-- Per-sender throttle stamps, age-pruned at the end of CleanupPartyData.
+local lastInboundBySender = {}
+local lastSyncRequestBySender = {}
+
 local function CleanupPartyData()
     local validPlayers = {}
 
@@ -248,6 +252,16 @@ local function CleanupPartyData()
             partyQuestData[playerName] = nil
             DeletePartyQuestNodes(nil, playerName)
         end
+    end
+
+    -- Age-prune per-sender throttle entries: 300s ≫ the 1s/10s cooldown
+    -- windows, so only departed senders drop.
+    local now = GetTime()
+    for sender, t in pairs(lastInboundBySender) do
+        if now - t > 300 then lastInboundBySender[sender] = nil end
+    end
+    for sender, t in pairs(lastSyncRequestBySender) do
+        if now - t > 300 then lastSyncRequestBySender[sender] = nil end
     end
 end
 
@@ -769,7 +783,6 @@ local function ShareQuestData(forceFullSync)
                 if existing.quest == entry.quest and existing.objective == entry.objective then
                     partyQuestData[myName][entry.targetKey][i].current = entry.current
                     partyQuestData[myName][entry.targetKey][i].total = entry.total
-                    partyQuestData[myName][entry.targetKey][i].lastUpdate = GetTime()
                     found = true
                     break
                 end
@@ -781,7 +794,6 @@ local function ShareQuestData(forceFullSync)
                     objective = entry.objective,
                     current = entry.current,
                     total = entry.total,
-                    lastUpdate = GetTime()
                 })
             end
         end
@@ -825,12 +837,12 @@ local function StorePartyObjective(sender, targetName, questId, questTitle, obje
     end
     local list = senderList[targetName]
     for i, data in ipairs(list) do
-        if data.quest == questTitle and (not questId or not data.questId or data.questId == questId) then
+        -- Key on objective too: quest alone collapses kill+drop rows on one target.
+        if data.quest == questTitle and data.objective == objectiveText and (not questId or not data.questId or data.questId == questId) then
             list[i].questId = questId or data.questId
             list[i].objective = objectiveText or data.objective
             list[i].current = current
             list[i].total = total
-            list[i].lastUpdate = GetTime()
             return
         end
     end
@@ -841,7 +853,6 @@ local function StorePartyObjective(sender, targetName, questId, questTitle, obje
         objective = objectiveText,
         current = current,
         total = total,
-        lastUpdate = GetTime(),
     })
 end
 
@@ -896,7 +907,9 @@ local function HandleRemoveQ(sender, message)
                 local i = 1
                 while i <= table.getn(quests) do
                     local entry = quests[i]
-                    if entry.quest == removeQuestTitle and (not entry.questId or entry.questId == tonumber(removeQuestId)) then
+                    -- Wire title is the sender's locale: match by id when the row has one,
+                    -- title only for legacy rows that predate ids.
+                    if (entry.questId and entry.questId == tonumber(removeQuestId)) or (not entry.questId and entry.quest == removeQuestTitle) then
                         table.remove(quests, i)
                                                     dbg("|cff33ffccpf|cffffffffQuest:|r   Removed from " .. targetKey)
                     else
@@ -1154,7 +1167,6 @@ eventFrame:RegisterEvent("QUEST_LOG_UPDATE")
 -- Per-sender inbound throttle: a buggy peer blasting V1 batches must not
 -- hold us in SearchQuestID rebuilds. Bursts queue per sender and flush
 -- in order; batches are deltas, so newest-wins would lose data.
-local lastInboundBySender = {}
 -- Inbound burst cap per sender; beyond it the oldest queued batch drops.
 -- Normal traffic (even full-sync multi-batch) stays far below this.
 local MAX_QUEUED_BATCHES = 16
@@ -1164,8 +1176,14 @@ local INBOUND_THROTTLE_SECS = 1
 
 -- Pull-request cooldown per sender: a reloaded peer asks once, but a
 -- chatty peer must not turn answers into a broadcast storm.
-local lastSyncRequestBySender = {}
 local SYNC_REQUEST_COOLDOWN_SECS = 10
+
+-- One answer broadcasts to the whole party channel, so N peers asking on
+-- the same load screen need exactly one share.
+-- shortcut: 1 global answer/sec; upgrade to per-zone requester dedup if
+-- zone loads still hitch with this cap in place.
+local lastSyncAnswer = 0
+local SYNC_ANSWER_INTERVAL_SECS = 1
 
 local function SyncRequestAllowed(sender)
     if not sender then return false end
@@ -1211,41 +1229,30 @@ local function InboundAllowed(sender)
 end
 
 local function HandlePfqeMessage(sender, message)
+    local kind
     if string.sub(message or "", 1, 8) == "REMOVEQ:" then
-        if InboundAllowed(sender) then
-            ProcessQuestData(sender, message)
-        else
-            local queued = pendingInboundBySender[sender]
-            if not queued then queued = {} pendingInboundBySender[sender] = queued end
-            if table.getn(queued) >= MAX_QUEUED_BATCHES then table.remove(queued, 1) end
-            table.insert(queued, message)
-            dbg("|cff33ffccpf|cffffffffQuest:|r inbound REMOVEQ from " .. tostring(sender) .. " queued")
-        end
+        kind = "REMOVEQ from"
     elseif string.sub(message or "", 1, 3) == "V1|" then
-        if InboundAllowed(sender) then
-            ProcessQuestData(sender, message)
-        else
-            local queued = pendingInboundBySender[sender]
-            if not queued then queued = {} pendingInboundBySender[sender] = queued end
-            if table.getn(queued) >= MAX_QUEUED_BATCHES then table.remove(queued, 1) end
-            table.insert(queued, message)
-            dbg("|cff33ffccpf|cffffffffQuest:|r inbound batch from " .. tostring(sender) .. " queued")
-        end
+        kind = "batch from"
     elseif string.sub(message or "", 1, 7) == "REMOVE:" or string.sub(message or "", 1, 6) == "QUEST:" then
-        if InboundAllowed(sender) then
-            ProcessQuestData(sender, message)
-        else
-            local queued = pendingInboundBySender[sender]
-            if not queued then queued = {} pendingInboundBySender[sender] = queued end
-            if table.getn(queued) >= MAX_QUEUED_BATCHES then table.remove(queued, 1) end
-            table.insert(queued, message)
-            dbg("|cff33ffccpf|cffffffffQuest:|r inbound legacy message from " .. tostring(sender) .. " queued")
-        end
+        kind = "legacy message from"
     elseif debugMode then
         dbg("|cff33ffccpf|cffffffffQuest:|r unknown pfqe batch version (" .. string.sub(message or "", 1, 6) .. ")")
+        return
+    else
+        return
+    end
+
+    if InboundAllowed(sender) then
+        ProcessQuestData(sender, message)
+    else
+        local queued = pendingInboundBySender[sender]
+        if not queued then queued = {} pendingInboundBySender[sender] = queued end
+        if table.getn(queued) >= MAX_QUEUED_BATCHES then table.remove(queued, 1) end
+        table.insert(queued, message)
+        dbg("|cff33ffccpf|cffffffffQuest:|r inbound " .. kind .. " " .. tostring(sender) .. " queued")
     end
 end
-
 local inboundFlushAccum = 0
 local inboundFlushLast = nil
 local questLogSyncPending = false
@@ -1253,17 +1260,29 @@ local questLogSyncAccum = 0
 local questLogSyncLast = nil
 local QUEST_LOG_SYNC_DEBOUNCE = 2
 
+-- shortcut: 4 batches per 1s flush tick (one batch = a PARTY-store delete
+-- scan + one SearchQuestID per quest + a redraw); upgrade to per-frame
+-- time-slicing if a single batch alone hitches.
+local MAX_FLUSH_BATCHES_PER_TICK = 4
+
 local function FlushPendingInbound(elapsed)
     inboundFlushAccum = inboundFlushAccum + (elapsed or 0)
     if inboundFlushAccum < INBOUND_THROTTLE_SECS then return end
     inboundFlushAccum = 0
     if not IsSyncEnabled() then return end
+    local budget = MAX_FLUSH_BATCHES_PER_TICK
     for sender, queued in pairs(pendingInboundBySender) do
-        pendingInboundBySender[sender] = nil
+        if budget <= 0 then break end -- remainder stays queued for the next tick
         if IsTrustedSender(sender, GetGroupDistribution()) and InboundAllowed(sender) then
-            for _, message in ipairs(queued) do
-                ProcessQuestData(sender, message)
+            while table.getn(queued) > 0 and budget > 0 do
+                ProcessQuestData(sender, table.remove(queued, 1))
+                budget = budget - 1
             end
+            if table.getn(queued) == 0 then
+                pendingInboundBySender[sender] = nil
+            end
+        else
+            pendingInboundBySender[sender] = nil
         end
     end
 end
@@ -1318,9 +1337,15 @@ eventFrame:SetScript("OnEvent", function(self, event, a1, a2, a3, a4)
         elseif prefix == "PFQUEST_SYNC_REQUEST" then
             -- A peer reloaded (or logged in) mid-party: no membership event
             -- fires here, so answer their pull with a full share. Per-sender
-            -- cooldown keeps a chatty peer from turning this into a storm.
+            -- cooldown keeps a chatty peer from turning this into a storm;
+            -- the global cap below covers a whole 5-man asking on one load
+            -- screen (one share serves everyone on the channel).
             if IsSyncEnabled() and IsTrustedSender(sender, channel) and SyncRequestAllowed(sender) then
-                ShareQuestData(true)
+                local now = (GetTime and GetTime()) or 0
+                if now - lastSyncAnswer >= SYNC_ANSWER_INTERVAL_SECS then
+                    lastSyncAnswer = now
+                    ShareQuestData(true)
+                end
             end
         end
     elseif event == "PARTY_MEMBERS_CHANGED" or event == "RAID_ROSTER_UPDATE" then
@@ -1431,4 +1456,6 @@ pfQuest.partyapi = {
     PumpSyncTimers = PumpSyncTimers,
     partyQuestData = partyQuestData,
     myQuestMappings = myQuestMappings,
+    lastInboundBySender = lastInboundBySender,
+    lastSyncRequestBySender = lastSyncRequestBySender,
 }

@@ -188,6 +188,7 @@ end
 -- Observe (never replace) map's update pipeline through the sanctioned seam.
 -- The continent body below runs unchanged after every map update.
 local function UpdateContinentPins()
+    if WorldMapFrame and not WorldMapFrame:IsShown() then return end
     if not GetCurrentMapContinent or not GetCurrentMapZone then
       return
     end
@@ -195,7 +196,7 @@ local function UpdateContinentPins()
     local continent = GetCurrentMapContinent()
     local zone = GetCurrentMapZone()
 
-    for i = 1, maxContinentPins do
+    for i = 1, table.getn(continentPins) do
       if continentPins[i] then
         continentPins[i]:Hide()
         continentPins[i].node = nil

@@ -22,11 +22,6 @@ local function SkipLowLevelQuest(isLowLevel)
   return pfQuest_config and pfQuest_config["epochAutoQuestsSkipLowLevel"] == "1" and isLowLevel
 end
 
-local function IsTrivialQuest()
-  local title = GetTitleText and GetTitleText()
-  return title and string.find(string.lower(title), "low level") ~= nil
-end
-
 pfQuestAutomation.OnEvent = function(self, event, ...)
   if not pfQuest_config or pfQuest_config["epochAutoQuests"] ~= "1" then
     return
@@ -64,7 +59,11 @@ pfQuestAutomation.OnEvent = function(self, event, ...)
     end
 
   elseif event == "QUEST_DETAIL" then
-    if not IsTrivialQuest() then
+    local title = GetTitleText and GetTitleText()
+    local ids = title and pfDatabase.nameIndex["quests"] and pfDatabase.nameIndex["quests"][title]
+    local qdata = ids and ids[1] and pfDB.quests.data[ids[1]]
+    local c = qdata and qdata.lvl and pfQuestCompat.GetDifficultyColor(qdata.lvl)
+    if not SkipLowLevelQuest(c and c.r == c.g and c.g == c.b) then
       if AcceptQuest then AcceptQuest() end
     end
 

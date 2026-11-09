@@ -3,6 +3,20 @@ local strsplit = pfUI and pfUI.api and pfUI.api.strsplit
 
 local lastBroadcast = 0
 local version, remote, major, minor, fix, displayed, available
+-- Wire format is the dotted string "1.2.3". Bare numbers are legacy
+-- senders (major*10000+minor*100+fix), decoded best-effort.
+local function ParseVersion(str)
+  local ma, mi, fi = string.match(tostring(str), "^(%d+)%.(%d+)%.(%d+)$")
+  if ma then return { tonumber(ma), tonumber(mi), tonumber(fi) } end
+  local num = tonumber(str)
+  if not num or num ~= num or num < 0 or num > 99999999 then return nil end
+  return { math.floor(num / 10000), math.floor(num % 10000 / 100), math.floor(num % 100) }
+end
+local function Newer(amaj, amin, afix, bmaj, bmin, bfix)
+  if amaj ~= bmaj then return amaj > bmaj end
+  if amin ~= bmin then return amin > bmin end
+  return afix > bfix
+end
 local versioncheck = CreateFrame("Frame")
 versioncheck:RegisterEvent("ADDON_LOADED")
 versioncheck:RegisterEvent("CHAT_MSG_ADDON")
@@ -18,14 +32,14 @@ versioncheck:SetScript("OnEvent", function()
       minor = tonumber(minor) or 0
       fix = tonumber(fix) or 0
 
-      version = major * 10000 + minor * 100 + fix
+      version = major * 10000 + minor * 100 + fix -- guards only; never compare remote versions with this (collides: v1.0.100 == v1.1.0)
     end
 
     return
   elseif event == "CHAT_MSG_ADDON" and arg1 == "pfQReborn" then
     local v, remoteversion = strsplit(":", arg2)
-    local remoteversion = tonumber(remoteversion)
-    if v == "VERSION" and remoteversion then
+    local rtuple = v == "VERSION" and ParseVersion(remoteversion)
+    if rtuple then
       -- Only trust group members: anyone on the addon channel could
       -- otherwise pin latest=999999 and trigger a bogus update notice.
       -- (arg4 is the sender; nil in unit tests counts as trusted.)
@@ -42,9 +56,9 @@ versioncheck:SetScript("OnEvent", function()
         end
       end
       if trusted then
-        remote = remote and max(remote, remoteversion) or remoteversion
-        if version and remote > version then
-          pfQuestConfig:SetLatest(remote)
+        if not remote or Newer(rtuple[1], rtuple[2], rtuple[3], remote[1], remote[2], remote[3]) then remote = rtuple end
+        if version and Newer(remote[1], remote[2], remote[3], major, minor, fix) then
+          pfQuestConfig:SetLatest(string.format("%d.%d.%d", remote[1], remote[2], remote[3]))
         end
       end
     end
@@ -63,9 +77,10 @@ versioncheck:SetScript("OnEvent", function()
     local now = (GetTime and GetTime()) or 0
     if now - lastBroadcast >= 10 then
       lastBroadcast = now
-      local grouped = (GetNumPartyMembers and GetNumPartyMembers() > 0) or (GetNumRaidMembers and GetNumRaidMembers() > 0)
-      local chan = grouped and "PARTY" or nil -- subgroup only, even in raids
-      if chan then SendAddonMessage("pfQReborn", "VERSION:" .. version, chan) end
+      local inraid = GetNumRaidMembers and GetNumRaidMembers() > 0
+      local grouped = (GetNumPartyMembers and GetNumPartyMembers() > 0) or inraid
+      local chan = grouped and (inraid and "RAID" or "PARTY") or nil -- whole raid, not just subgroup
+      if chan then SendAddonMessage("pfQReborn", string.format("VERSION:%d.%d.%d", major, minor, fix), chan) end
     end
   end
 
@@ -75,7 +90,9 @@ versioncheck:SetScript("OnEvent", function()
   end
 
   -- display available update
-  if version and version > 0 and pfQuest_config.latest and pfQuest_config.latest > version and not displayed then
+  local latest = pfQuest_config.latest
+  if type(latest) ~= "table" then latest = ParseVersion(latest) end
+  if version and version > 0 and latest and Newer(latest[1], latest[2], latest[3], major, minor, fix) and not displayed then
     DEFAULT_CHAT_FRAME:AddMessage(
       "|cff33ffccpf|cffffffffQuest |cff888888[Reborn]|r: " .. pfQuest_Loc["New version available!"]
     )

@@ -481,7 +481,7 @@ pfQuest:SetScript("OnUpdate", function()
 
         -- tell the party to clear our markers for this quest
         if pfQuest.partyapi and pfQuest.partyapi.BroadcastQuestRemove then
-          pfQuest.partyapi:BroadcastQuestRemove(entry[2], entry[1])
+          pfQuest.partyapi.BroadcastQuestRemove(entry[2], entry[1])
         end
 
         pfQuest.abandon = ""
@@ -655,10 +655,13 @@ function pfQuest:UpdateQuestlog()
         for i = 1, objectives, 1 do
           local text, _, done = GetQuestLogLeaderBoard(i, qlogid)
           sp[n + 1] = i
-          sp[n + 2] = text or (done and "done" or "todo")
-          n = n + 2
+          sp[n + 2] = text or ""
+          sp[n + 3] = done and "1" or "0"
+          n = n + 3
         end
       end
+      sp[n + 1] = (complete == 1 or complete == true) and "C" or ""
+      n = n + 1
       state = concat(sp, "", 1, n)
 
       -- announce quest objective completion only on active transition (incomplete -> complete)
@@ -770,9 +773,7 @@ end
 function pfQuest:ResetAll()
   -- force reload all quests
   pfMap:DeleteNode("PFQUEST")
-  if pfMap.DeleteNode then
-    pfMap:DeleteNode("PARTY")
-  end
+  pfMap:DeleteNode("PARTY")
   if pfQuest.partyapi and pfQuest.partyapi.CleanupPartyData then
     pfQuest.partyapi:CleanupPartyData()
   end
@@ -858,7 +859,7 @@ function pfQuest:AddQuestLogIntegration()
   pfQuest.buttonLanguage.txt:SetJustifyH("RIGHT")
   pfQuest.buttonLanguage.txt:SetText("|cff000000[|cff333333" .. pfQuest_Loc["Translate"] .. "|cff000000]")
 
-  pfQuest.buttonLanguage:SetScript("OnClick", function()
+  pfQuest.buttonLanguage:SetScript("OnClick", function(self)
     UIDropDownMenu_Initialize(self, function()
       local func = function()
         pfQuest_config.translate = this.value

@@ -2,9 +2,15 @@
 -- shared state through pfQuest.partyapi / pfQuest.partyQuestData;
 -- orchestration lives in party.lua.
 
-local function GetClassColor(playerName)
-    -- self first (no break: a nameless class falls through to group scan,
-    -- same as before), then raid or party members in unit order.
+local WHITE = { 1.0, 1.0, 1.0 }
+
+-- Group-wide class colors, built once per tooltip render (the old
+-- per-line lookup allocated + scanned the roster every line). Precedence
+-- matches it: player first, then raid/party in unit order; first
+-- name-match decides -- its color, WHITE on a classless group match,
+-- and a classless player defers to the group scan.
+local function BuildClassColors()
+    local colors = {}
     local units = { "player" }
     local numRaid = GetNumRaidMembers and GetNumRaidMembers() or 0
     if numRaid > 0 then
@@ -15,16 +21,19 @@ local function GetClassColor(playerName)
         end
     end
     for _, unit in ipairs(units) do
-        if UnitName(unit) == playerName then
+        local name = UnitName(unit)
+        if name and colors[name] == nil then
             local _, class = UnitClass(unit)
-            if class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class] then
-                local c = RAID_CLASS_COLORS[class]
-                return { c.r, c.g, c.b }
+            local c = class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]
+            if c then
+                colors[name] = { c.r, c.g, c.b }   -- array form: line ~86 indexes [1..3]
+            elseif unit ~= "player" then
+                colors[name] = WHITE               -- old `break` -> white
             end
-            if unit ~= "player" then break end
+            -- classless player: deferred, a same-name group unit may still decide
         end
     end
-    return { 1.0, 1.0, 1.0 }
+    return colors
 end
 
 -- One grouping/dedupe pass over partyQuestData for a single target.
@@ -68,11 +77,12 @@ end
 -- instead of printing bare spacer lines.
 local function AppendPartyLines(tooltip, questGroups)
     if not next(questGroups) then return end
+    local colors = BuildClassColors()
     tooltip:AddLine(" ")
     for questName, lines in pairs(questGroups) do
         tooltip:AddLine("|cff555555[|cffffcc00!|cff555555]|r " .. questName, 1, 1, 0)
         for _, line in ipairs(lines) do
-            local classColor = GetClassColor(line.player)
+            local classColor = colors[line.player] or WHITE
             local current = tonumber(line.current) or 0
             local total = tonumber(line.total) or 0
             local perc = (total > 0) and (current / total) or 0
@@ -96,6 +106,11 @@ end
 -- HookScript stacks: without this, the epoch+Reborn migration (both folders
 -- installed) or a double ADDON_LOADED would render every line twice.
 local gameTooltipHooked = false
+-- One-slot ShowLoots memo: last hovered unit name -> its ids. GetIDByName
+-- has no "units" nameIndex entry, so every miss rescans pfDB.units (~11k
+-- rows) on a hot hover path; one kept name bounds memory to constant.
+local lastLootName, lastLootIds
+
 local function HookGameTooltip()
     if gameTooltipHooked then return true end
     gameTooltipHooked = true
@@ -105,8 +120,14 @@ local function HookGameTooltip()
         if UnitIsPlayer(unit) then return end
 
         -- ShowLoots: top mob drops, independent of party sync.
+        -- One-slot memo: same-name re-hovers reuse lastLootIds instead of
+        -- rescanning the unit DB; a new name evicts the previous one.
         if pfQuest_config and pfQuest_config["showloots"] ~= "0" and pfQuestLoot and pfDatabase then
-          for id in pairs(pfDatabase:GetIDByName(unitName, "units")) do
+          if unitName ~= lastLootName then
+            lastLootName = unitName
+            lastLootIds = pfDatabase:GetIDByName(unitName, "units")
+          end
+          for id in pairs(lastLootIds) do
             if pfQuestLoot.AppendTooltipLines(self, id) then break end
           end
         end
