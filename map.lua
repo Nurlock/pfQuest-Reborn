@@ -1490,11 +1490,9 @@ function pfMap:NodeEnter()
   pfMap.highlight = pfQuest_config["mouseover"] == "1" and this.title
 end
 
--- Single writer for the hover-highlight title.
-function pfMap:SetHighlight(title)
-  pfMap.highlight = title
-  pfMap:RequestUpdate()
-end
+-- Hover-highlight title; written directly by map pins (NodeEnter/NodeLeave),
+-- the quest-log click hook and tracker row hover -- no setter: a RequestUpdate
+-- from hover fed an update loop that strobed the tracker highlight.
 
 -- Single writer for click-to-recolor (map + tracker clicks come here).
 function pfMap:CyclePinColor(title)

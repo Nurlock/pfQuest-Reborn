@@ -379,12 +379,14 @@ do -- button panel
 end
 
 function tracker.ButtonEnter()
-  pfMap:SetHighlight(this.title)
+  -- write highlight directly: RequestUpdate here fed UpdateNodes ->
+  -- ButtonAdd/ButtonEvent churn that strobed the row highlight.
+  pfMap.highlight = this.title
   ShowTooltip()
 end
 
 function tracker.ButtonLeave()
-  pfMap:SetHighlight(nil)
+  pfMap.highlight = nil
   HideTooltip()
 end
 
