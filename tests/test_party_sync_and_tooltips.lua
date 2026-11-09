@@ -63,6 +63,7 @@ end
 env.UnitClass = function(u)
   return "Warrior", "WARRIOR"
 end
+env.RAID_CLASS_COLORS = { WARRIOR = { r = 1, g = 0, b = 0 } }
 
 env.GetQuestLogTitle = function(index)
   if index == 1 then return "Defias Hunt", 10, "Elite", false, false, 0 end
@@ -145,9 +146,12 @@ testTip.Show = function(self) self.shown = true end
 -- Simulate hover
 testTip:FireScript("OnTooltipSetUnit")
 local foundProgress = false
+local cc = env.RAID_CLASS_COLORS.WARRIOR
+local classEsc = string.format("|cFF%02x%02x%02x", cc.r * 255, cc.g * 255, cc.b * 255)
 for _, line in ipairs(testTip.lines) do
   if string.find(line, "PartyFriend") and string.find(line, "4/10") then
     foundProgress = true
+    assert(string.find(line, classEsc .. "PartyFriend", 1, true), "party line must use member class color")
   end
 end
 assert(foundProgress, "Tooltip must include party member and objective progress 4/10")
@@ -338,7 +342,7 @@ epoch.ProcessQuestData("IdFriend", "V1|U116Q100:4:10;")
 assert(epoch.partyQuestData["IdFriend"] ~= nil, "IdFriend data must exist")
 -- inject a same-title entry with a different quest id; REMOVEQ:100 must keep it
 table.insert(epoch.partyQuestData["IdFriend"]["Defias Bandit"], {
-  quest = "Defias Hunt", questId = 999, objective = "Other", current = 1, total = 5, lastUpdate = 0,
+  quest = "Defias Hunt", questId = 999, objective = "Other", current = 1, total = 5,
 })
 epoch.ProcessQuestData("IdFriend", "REMOVEQ:100:Defias Hunt")
 local remaining = epoch.partyQuestData["IdFriend"]["Defias Bandit"]
@@ -555,5 +559,167 @@ assert(leftover == false, "nodes store must not keep the deleted title")
 assert(pfMap:DeleteNodesWhere("PARTY", function() return false end) == false,
   "DeleteNodesWhere must report no-ops")
 print("  ✓ PASS: DeleteNodesWhere removes title + indexes")
+
+print("[TEST] 20. Two objectives on the same quest+target stay separate rows...")
+-- V1 carries counts only: two log objectives with distinct totals make the
+-- receiver resolve two different objective texts for one quest+target pair.
+local savedNumBoards, savedBoard = env.GetNumQuestLeaderBoards, env.GetQuestLogLeaderBoard
+env.GetNumQuestLeaderBoards = function(index)
+  if index == 1 then return 2 end
+  return 0
+end
+env.GetQuestLogLeaderBoard = function(objIndex, qlogIndex)
+  if qlogIndex == 1 and objIndex == 1 then return "Defias Bandit: 4/10", "monster", false end
+  if qlogIndex == 1 and objIndex == 2 then return "Collect Defias Silk: 2/5", "item", false end
+  return nil
+end
+epoch.InvalidateLogCache()
+epoch.ProcessQuestData("PartyFriend", "V1|U116Q100:4:10;U116Q100:2:5;")
+local dualRows = epoch.partyQuestData["PartyFriend"]["Defias Bandit"]
+assert(dualRows and table.getn(dualRows) == 2,
+  "kill+drop on one NPC must keep two rows, got " .. tostring(dualRows and table.getn(dualRows)))
+assert(dualRows[1].objective == "Defias Bandit" and dualRows[1].current == 4 and dualRows[1].total == 10,
+  "row 1 must stay the kill objective 4/10")
+assert(dualRows[2].objective == "Collect Defias Silk" and dualRows[2].current == 2 and dualRows[2].total == 5,
+  "row 2 must be the drop objective 2/5")
+-- Restore the shared log mock so later tests see the baseline objective set.
+env.GetNumQuestLeaderBoards, env.GetQuestLogLeaderBoard = savedNumBoards, savedBoard
+epoch.InvalidateLogCache()
+print("  ✓ PASS: kill and drop objectives on one NPC stay two rows")
+
+print("[TEST] 21. REMOVEQ matches by id across locales; title only for legacy rows...")
+-- Row title came from the receiver's own DB; the wire title is the sender's locale.
+epoch.ProcessQuestData("LocaleFriend", "V1|U116Q100:4:10;")
+assert(epoch.partyQuestData["LocaleFriend"] ~= nil, "setup: LocaleFriend data must exist")
+epoch.ProcessQuestData("LocaleFriend", "REMOVEQ:100:Chasse aux Défias")
+assert(epoch.partyQuestData["LocaleFriend"] == nil,
+  "row with questId=100 must be removed even when the wire title differs (mixed locale)")
+-- Legacy rows without questId still rely on title matching.
+epoch.partyQuestData["LegacyFriend"] = { ["Defias Bandit"] = { {
+  quest = "Defias Hunt", objective = "Other", current = 1, total = 5,
+} } }
+epoch.ProcessQuestData("LegacyFriend", "REMOVEQ:100:Defias Hunt")
+assert(epoch.partyQuestData["LegacyFriend"] == nil,
+  "legacy id-less row must be removed by title")
+print("  ✓ PASS: REMOVEQ cross-locale id match + legacy title match")
+
+print("[TEST] 22. Inbound flush caps total batches per tick...")
+-- Drain any leftovers and re-arm the flush accumulator from a known state.
+env.AdvanceTime(2)
+epoch.eventFrame:FireScript("OnUpdate")
+
+env.pfDB.units.loc[250] = "FlushTarget Alpha"
+env.pfDB.units.loc[251] = "FlushTarget Beta"
+for i = 101, 108 do env.pfDB.quests.loc[i] = { T = "FlushQuest " .. i } end
+
+-- Head batch per sender applies on arrival (opens its throttle); the rest
+-- queue: 3 + 3 = 6 batches > the 4-per-tick flush budget.
+local flushBurst = {
+  { "BatchFriend", "V1|U250Q101:1:5;" },
+  { "GoldFriend",  "V1|U251Q105:1:5;" },
+  { "BatchFriend", "V1|U250Q102:1:5;" },
+  { "BatchFriend", "V1|U250Q103:1:5;" },
+  { "BatchFriend", "V1|U250Q104:1:5;" },
+  { "GoldFriend",  "V1|U251Q106:1:5;" },
+  { "GoldFriend",  "V1|U251Q107:1:5;" },
+  { "GoldFriend",  "V1|U251Q108:1:5;" },
+}
+for _, m in ipairs(flushBurst) do
+  epoch.eventFrame:FireScript("OnEvent", "CHAT_MSG_ADDON", "pfqe", m[2], "PARTY", m[1])
+end
+
+-- One row per processed batch (distinct quest per batch, dedup keys on
+-- quest+objective, so processed batches are countable).
+local function flushRows()
+  local n = 0
+  for _, sender in ipairs({ "BatchFriend", "GoldFriend" }) do
+    for _, list in pairs(epoch.partyQuestData[sender] or {}) do
+      for _, row in ipairs(list) do
+        if string.find(row.quest or "", "^FlushQuest") then n = n + 1 end
+      end
+    end
+  end
+  return n
+end
+
+assert(flushRows() == 2, "burst heads must apply immediately, got " .. flushRows())
+env.AdvanceTime(2)
+epoch.eventFrame:FireScript("OnUpdate")
+assert(flushRows() == 6,
+  "one flush tick must process exactly the 4-batch budget, got " .. (flushRows() - 2))
+env.AdvanceTime(2)
+epoch.eventFrame:FireScript("OnUpdate")
+assert(flushRows() == 8,
+  "queued remainder must flush on the next tick, got " .. (flushRows() - 2))
+print("  ✓ PASS: flush processes at most 4 batches/tick, remainder stays queued")
+
+print("[TEST] 23. SYNC_REQUEST answers are globally rate-limited ~1/sec...")
+-- Zone-in stampede: every peer asks at once; the first answer shares to
+-- the whole party channel, so the rest must be suppressed for ~1s.
+env.AdvanceTime(30) -- clear per-sender cooldowns and the global answer window
+epoch.RebuildQuestMappings()
+sentAddonMessages = {}
+epoch.eventFrame:FireScript("OnEvent", "CHAT_MSG_ADDON", "PFQUEST_SYNC_REQUEST", "1", "PARTY", "PartyFriend")
+assert(#sentAddonMessages > 0, "fresh SYNC_REQUEST must be answered")
+local afterAnswer = #sentAddonMessages
+epoch.eventFrame:FireScript("OnEvent", "CHAT_MSG_ADDON", "PFQUEST_SYNC_REQUEST", "1", "PARTY", "EpochFriend")
+assert(#sentAddonMessages == afterAnswer,
+  "second answer inside the 1s window must be suppressed")
+env.AdvanceTime(11) -- past both the per-sender cooldown and the global window
+epoch.eventFrame:FireScript("OnEvent", "CHAT_MSG_ADDON", "PFQUEST_SYNC_REQUEST", "1", "PARTY", "PartyFriend")
+assert(#sentAddonMessages > afterAnswer, "answer must resume once the window passes")
+print("  ✓ PASS: SYNC_REQUEST answers capped globally at ~1/sec")
+
+print("[TEST] 24. Verifying raid-group inbound trust via UnitInRaid (audit finding 19)...")
+-- Baseline stubs (UnitInRaid -> nil at line 11, GetNumRaidMembers -> 0 at
+-- line 56, reset pattern in test 8 at line 287) never let the raid branch
+-- at party.lua:1190-1192 run. Temporarily put the suite in a 10-member raid.
+local savedRaidMembers, savedUnitInRaid = env.GetNumRaidMembers, env.UnitInRaid
+env.GetNumRaidMembers = function() return 10 end
+env.UnitInRaid = function(unit)
+  if unit == "RaidFriend" then return 7 end
+  return nil -- "Stranger" is not on the roster
+end
+
+-- party.lua:1189 gates on channel "PARTY" (the addon always sends PARTY,
+-- pinned by test 6), so a literal "RAID" channel is dropped before the raid
+-- branch can even run.
+env.AdvanceTime(2)
+epoch.eventFrame:FireScript("OnEvent", "CHAT_MSG_ADDON", "pfqe", "V1|U116Q100:4:10;", "RAID", "RaidFriend")
+assert(epoch.partyQuestData["RaidFriend"] == nil,
+  "literal RAID channel must be dropped at the party.lua:1189 channel gate")
+
+-- In-raid sender present in the roster: raid branch must trust and ingest.
+env.AdvanceTime(2)
+epoch.eventFrame:FireScript("OnEvent", "CHAT_MSG_ADDON", "pfqe", "V1|U116Q100:4:10;", "PARTY", "RaidFriend")
+local raidData = epoch.partyQuestData["RaidFriend"]
+assert(raidData ~= nil and raidData["Defias Bandit"] ~= nil,
+  "UnitInRaid(sender) ~= nil in a raid must be trusted and ingested")
+assert(raidData["Defias Bandit"][1].current == 4,
+  "raid-group row must carry the shared 4/10 progress")
+
+-- Same raid, same channel, but UnitInRaid(sender) == nil: batch must drop.
+env.AdvanceTime(2)
+epoch.eventFrame:FireScript("OnEvent", "CHAT_MSG_ADDON", "pfqe", "V1|U116Q100:4:10;", "PARTY", "Stranger")
+assert(epoch.partyQuestData["Stranger"] == nil,
+  "UnitInRaid(sender) == nil must drop the batch (raid branch false)")
+
+-- Restore baseline stubs (same pattern as the test 8 reset).
+env.GetNumRaidMembers, env.UnitInRaid = savedRaidMembers, savedUnitInRaid
+print("  ✓ PASS: raid-group trust decided by UnitInRaid")
+
+print("[TEST] 25. CleanupPartyData age-prunes per-sender throttle stamps...")
+-- Seed stale stamps in both dicts, then age past the 300s prune window.
+-- A sender stamped after the jump must survive; stale entries must drop.
+epoch.lastInboundBySender["StaleIn"] = env.GetTime()
+epoch.lastSyncRequestBySender["StaleSync"] = env.GetTime()
+env.AdvanceTime(301)
+assert(epoch.InboundAllowed("FreshIn") == true, "fresh sender must pass the inbound throttle")
+assert(epoch.lastInboundBySender["FreshIn"] ~= nil, "fresh sender must be stamped")
+epoch.CleanupPartyData()
+assert(epoch.lastInboundBySender["StaleIn"] == nil, "stale inbound stamp must be pruned")
+assert(epoch.lastSyncRequestBySender["StaleSync"] == nil, "stale sync-request stamp must be pruned")
+assert(epoch.lastInboundBySender["FreshIn"] ~= nil, "fresh inbound stamp must survive the prune")
+print("  ✓ PASS: CleanupPartyData age-prunes stale per-sender throttle stamps")
 
 print("\ntest_party_sync_and_tooltips PASSED successfully!")

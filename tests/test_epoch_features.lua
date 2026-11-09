@@ -145,6 +145,8 @@ env.pfMap = {
 env.pfQuest_config["currentquestgivers"] = "1"
 env.pfQuest_config["epochHideItemDrops"] = "0"
 env.pfDatabase:SearchQuestID(300, {}, {})
+assert(env.pfMap.unifiedcache["Orders of the Sea\1" .. 300] ~= nil,
+  "SearchQuestID clear must use the id-scoped key")
 
 local foundItemStart = false
 for _, n in ipairs(addedNodes) do
@@ -190,6 +192,24 @@ print("[TEST] Verifying Nameplate Quest Icons...")
 load_file("nameplates.lua")
 assert(env.pfQuestNameplates ~= nil, "pfQuestNameplates must be defined")
 assert(env.SLASH_PFQUESTNP1 == "/pfqnp", "SLASH_PFQUESTNP1 must be /pfqnp")
+
+-- audit 31: config writes must route through pfQuestConfig:Set (single-writer
+-- API). config.lua is not loaded in this env, so anchor a counting stub; both
+-- the /pfqnp handler and compatibilityCheck must hit it.
+local setCalls = {}
+env.pfQuestConfig.Set = function(_, key, val)
+  local id = tostring(key) .. "=" .. tostring(val)
+  setCalls[id] = (setCalls[id] or 0) + 1
+  env.pfQuest_config[key] = val
+end
+env.DEFAULT_CHAT_FRAME = { AddMessage = function() end }
+env.SlashCmdList["PFQUESTNP"]("on")
+assert(env.pfQuest_config["epochnameplatesEnabled"] == "1" and setCalls["epochnameplatesEnabled=1"],
+  "/pfqnp on must write through pfQuestConfig:Set")
+env.SlashCmdList["PFQUESTNP"]("off")
+assert(env.pfQuest_config["epochnameplatesEnabled"] == "0" and setCalls["epochnameplatesEnabled=0"],
+  "/pfqnp off must write through pfQuestConfig:Set")
+print("  ✓ PASS: /pfqnp routes config writes through pfQuestConfig:Set")
 
 -- Mock quest log entry for an active quest targeting Defias Captain
 env.GetNumQuestLogEntries = function() return 1 end
@@ -262,6 +282,26 @@ assert(accepted == false, "AcceptQuest must not be called when automation disabl
 env.pfQuest_config["epochAutoQuests"] = "1"
 env.pfQuestAutomation.OnEvent(nil, "QUEST_DETAIL")
 assert(accepted == true, "AcceptQuest must be called when automation enabled")
+
+-- Skip-low-level flag honored on QUEST_DETAIL: gray quest is skipped when
+-- the flag is on, accepted when off (stub own color: mock returns yellow).
+env.pfDatabase:BuildNameIndex()
+env.GetTitleText = function() return "A Simple Quest" end
+local origColor = env.pfQuestCompat.GetDifficultyColor
+env.pfQuestCompat.GetDifficultyColor = function() return { r = 0.82, g = 0.82, b = 0.82 } end
+
+accepted = false
+env.pfQuest_config["epochAutoQuestsSkipLowLevel"] = "1"
+env.pfQuestAutomation.OnEvent(nil, "QUEST_DETAIL")
+assert(accepted == false, "Gray quest must be skipped when skip-low-level flag is on")
+
+env.pfQuest_config["epochAutoQuestsSkipLowLevel"] = "0"
+env.pfQuestAutomation.OnEvent(nil, "QUEST_DETAIL")
+assert(accepted == true, "Gray quest must be accepted when skip-low-level flag is off")
+
+env.pfQuestCompat.GetDifficultyColor = origColor
+env.GetTitleText = function() return "Regular Quest" end
+print("  ✓ PASS: QUEST_DETAIL honors skip-low-level flag")
 
 local completed = false
 env.IsQuestCompletable = function() return true end
@@ -357,5 +397,9 @@ assert(sentChannel == "PARTY", "Raid turn-in must stay on PARTY, got " .. tostri
 env.GetNumPartyMembers = function() return 2 end
 env.GetNumRaidMembers = function() return 0 end
 print("  ✓ PASS: AnnounceQuest link and wording verified")
+
+-- audit 31: compat flip must route through the stub too (slash "off" wrote once above)
+assert(setCalls["epochnameplatesEnabled=0"] >= 2,
+  "compatibilityCheck must write epochnameplatesEnabled through pfQuestConfig:Set")
 
 print("test_epoch_features PASSED successfully!")

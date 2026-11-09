@@ -104,6 +104,56 @@ assert(#env.sentAddonMessages > 0, "PLAYER_ENTERING_WORLD should trigger SendAdd
 assert(env.sentAddonMessages[1].prefix == "pfQReborn", "Addon prefix must be pfQReborn, got " .. env.sentAddonMessages[1].prefix)
 print("  ✓ PASS: updatenotify uses pfQReborn prefix and guards against broadcast echo loops")
 
+-- 5b. Version wire format: dotted strings, tuple compare, strict newer
+print("[TEST] Verifying updatenotify dotted version wire format and tuple compare...")
+env.pfQuestConfig = env.pfQuestConfig or {}
+local setLatest = {}
+env.pfQuestConfig.SetLatest = function(self, v) table.insert(setLatest, v) end
+
+local function fire(msg)
+  load_file("updatenotify.lua")
+  local f = env.lastCreatedFrame
+  env.event = "ADDON_LOADED"
+  env.arg1 = "pfQuest"
+  f:FireScript("OnEvent")
+  env.event = "CHAT_MSG_ADDON"
+  env.arg1 = "pfQReborn"
+  env.arg2 = msg
+  env.arg4 = nil -- nil sender counts as trusted
+  f:FireScript("OnEvent")
+  return f
+end
+
+setLatest = {}
+fire("VERSION:1.2.0")
+assert(#setLatest == 1 and setLatest[1] == "1.2.0", "newer dotted version must SetLatest once as a dotted string")
+
+setLatest = {}
+fire("VERSION:10052")
+assert(#setLatest == 1 and setLatest[1] == "1.0.52", "legacy number must decode as major*10000+minor*100+fix")
+
+setLatest = {}
+fire("VERSION:1.0.7")
+assert(#setLatest == 0, "older version must not raise latest")
+
+setLatest = {}
+fire("VERSION:1.0.8")
+assert(#setLatest == 0, "equal version must not raise latest (strict newer)")
+
+setLatest = {}
+local vframe = fire("VERSION:junk")
+assert(#setLatest == 0, "unparsable version must be ignored")
+
+-- Broadcast body must now be the dotted string, not the colliding number
+env.sentAddonMessages = {}
+env.GetNumPartyMembers = function() return 1 end
+env.GetNumRaidMembers = function() return 0 end
+env.event = "PLAYER_ENTERING_WORLD"
+vframe:FireScript("OnEvent")
+assert(#env.sentAddonMessages == 1, "grouped PLAYER_ENTERING_WORLD must broadcast exactly once")
+assert(env.sentAddonMessages[1].msg == "VERSION:1.0.8", "broadcast body must be dotted, got " .. tostring(env.sentAddonMessages[1].msg))
+print("  ✓ PASS: updatenotify wire uses dotted versions with tuple compare and strict newer")
+
 -- 6. Test nameplate ScanQuestObjectives resolves titles via the name index
 -- (kill-path: runs on every QUEST_LOG_UPDATE, must not linearly scan questLoc)
 print("[TEST] Verifying nameplate title resolution uses the O(1) name index...")
