@@ -468,9 +468,11 @@ function pfQuestConfig:EnsurePath()
 end
 
 -- Links collapse state so it survives reloads (same table, no copy).
+-- Links to the SavedVar pfQuest_config (not this frame), so the tables
+-- written during the session are the ones SavedVariables serializes.
 function pfQuestConfig:LinkCollapsedIDs(store)
-  self.collapsedQuestIDs = self.collapsedQuestIDs or {}
-  store.collapsedQuestIDs = self.collapsedQuestIDs
+  pfQuest_config.collapsedQuestIDs = pfQuest_config.collapsedQuestIDs or {}
+  store.collapsedQuestIDs = pfQuest_config.collapsedQuestIDs
 end
 
 function pfQuestConfig:MigrateHistory()
@@ -954,6 +956,10 @@ pfQuestConfig:SetScript("OnEvent", function()
     pfQuestConfig:MigrateHistory()
     pfQuestConfig:CreateConfigEntries(pfQuest_defconfig)
 
+    if pfQuest_i18n and pfQuest_i18n.ApplyLanguage then
+      pfQuest_i18n.ApplyLanguage()
+    end
+
     -- If existing settings were present, mark welcome as done to prevent wizard popups on /reload
     if not isFresh and not pfQuest_config["welcome"] then
       pfQuest_config["welcome"] = "1"
@@ -969,10 +975,6 @@ pfQuestConfig:SetScript("OnEvent", function()
     -- clear quest history on new characters
     if UnitXP("player") == 0 and UnitLevel("player") == 1 then
       pfQuest_history = {}
-    end
-
-    if pfBrowserIcon and pfQuest_config["minimapbutton"] == "0" then
-      pfBrowserIcon:Hide()
     end
 
     if pfQuest and pfQuest.route and pfQuest.route.arrow then
