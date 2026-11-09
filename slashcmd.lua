@@ -52,6 +52,12 @@ SlashCmdList["PFDB"] = function(input, editbox)
     DEFAULT_CHAT_FRAME:AddMessage(
       "|cff33ffcc/db|cffffffff query |cffcccccc - " .. pfQuest_Loc["Query the server for completed quests"]
     )
+    DEFAULT_CHAT_FRAME:AddMessage(
+      "|cff33ffcc/db|cffffffff debug |cffcccccc - " .. pfQuest_Loc["Toggle debug mode"]
+    )
+    DEFAULT_CHAT_FRAME:AddMessage(
+      "|cff33ffcc/db|cffffffff meta |cffcccccc - " .. pfQuest_Loc["Alias for /db track"]
+    )
     return
   end
 
@@ -259,10 +265,6 @@ SlashCmdList["PFDB"] = function(input, editbox)
       state.min = state.max - 100
     end
 
-    if commandlist[2] == "clean" then
-      state = nil
-    end
-
     state = commandlist[2] == "clean" and nil or state
     local maps = pfDatabase:TrackMeta("mines", state)
     pfMap:ShowMapID(pfDatabase:GetBestMap(maps))
@@ -279,10 +281,6 @@ SlashCmdList["PFDB"] = function(input, editbox)
     if arg2 == "auto" then
       state.max = pfDatabase:GetPlayerSkill(182) or 0
       state.min = state.max - 100
-    end
-
-    if commandlist[2] == "clean" then
-      state = nil
     end
 
     state = commandlist[2] == "clean" and nil or state
