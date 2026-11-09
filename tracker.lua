@@ -498,6 +498,7 @@ end
 -- call. Avoids calling the API twice per objective (once for progress, once for
 -- display). Cleared at the start of each ButtonEvent invocation.
 local board_cache = {}
+local NOVERTEX = { 0, 0, 0 }
 
 function tracker.ButtonEvent(self)
   local self = self or this
@@ -539,7 +540,7 @@ function tracker.ButtonEvent(self)
   elseif node.texture then
     self.icon:SetTexture(node.texture)
 
-    local r, g, b = unpack(node.vertex or { 0, 0, 0 })
+    local r, g, b = unpack(node.vertex or NOVERTEX)
     if r > 0 or g > 0 or b > 0 then
       self.icon:SetVertexColor(unpack(node.vertex))
     else
@@ -593,10 +594,15 @@ function tracker.ButtonEvent(self)
         end
         entry[1], entry[2], entry[3] = text, type, done
         local _, _, obj, objNum, objNeeded = strfind(gsub(text, "\239\188\154", ":"), "(.*):%s*([%d]+)%s*/%s*([%d]+)")
+        -- parsed once at fill; read site consumes entry[4..6], no re-parse
+        entry[4], entry[5], entry[6] = obj, objNum, objNeeded
         if objNum and objNeeded then
           max = max + objNeeded
           cur = cur + objNum
-        elseif not done then
+        elseif done then
+          max = max + 1
+          cur = cur + 1
+        else
           max = max + 1
         end
       end
@@ -624,7 +630,7 @@ function tracker.ButtonEvent(self)
         -- read from cache instead of calling GetQuestLogLeaderBoard again
         local entry = board_cache[i]
         local text, _, done = entry[1], entry[2], entry[3]
-        local _, _, obj, objNum, objNeeded = strfind(gsub(text, "\239\188\154", ":"), "(.*):%s*([%d]+)%s*/%s*([%d]+)")
+        local obj, objNum, objNeeded = entry[4], entry[5], entry[6]
 
         if not self.objectives[i] then
           self.objectives[i] = self:CreateFontString(nil, "HIGH", "GameFontNormal")
@@ -639,6 +645,9 @@ function tracker.ButtonEvent(self)
           local r, g, b = pfMap.tooltip:GetColor(objNum, objNeeded)
           self.objectives[i]:SetTextColor(r + 0.2, g + 0.2, b + 0.2)
           self.objectives[i]:SetText(string.format("|cffffffff- %s:|r %s/%s", obj, objNum, objNeeded))
+        elseif done then
+          self.objectives[i]:SetTextColor(0.2, 1.0, 0.2)
+          self.objectives[i]:SetText("|cffffffff- " .. text)
         else
           self.objectives[i]:SetTextColor(0.8, 0.8, 0.8)
           self.objectives[i]:SetText("|cffffffff- " .. text)
@@ -1015,8 +1024,6 @@ function tracker.Reset()
   end
 
   -- add tracked quests
-  local _, numQuests = GetNumQuestLogEntries()
-  local found = 0
 
   if pfQuest_config["trackingmethod"] == 5 then
     -- "Current Zone" mode: skip dummy buttons here.
@@ -1052,10 +1059,7 @@ function tracker.Reset()
           end
         end
 
-        found = found + 1
-        if found >= numQuests then
-          break
-        end
+        -- no early break: GetNumQuestLogEntries() under-reports during bursts (see quest.lua)
       end
     end
   end
