@@ -14,13 +14,15 @@ frame, and every extra line costs runtime + review tokens later.
   Order matters: `browser.lua:30-35` derefs `pfDB` at file top, so
   anything moving load order must keep `database.lua` first.
 - `db/*.lua` are DATA (units 11k lines, items 8k, objects 7k, quests
-  6k). Never read them fully. `grep` for an ID or name instead.
+  6k). Generated code from `pfquest-db` (/home/ourouk/Projects/Gaming/pfquest/pfquest-db/);
+  do not edit directly as rebuilds overwrite changes. Never read them fully;
+  `grep` for an ID or name instead.
 - Logic lives in root `*.lua`: `quest.lua` (log scan loop),
   `tracker.lua` (watch frame), `route.lua` (TSP + line drawing),
   `map.lua` (pins, 2.2k lines), `database.lua` (search/cache, 3k),
   `party.lua` (party sync protocol) + `partytooltip.lua` (tooltip hooks).
-- Tests: `lua5.1 tests/run_all_tests.lua` (9 suites). Mocks live in
-  `tests/mock_wow_api.lua`.
+- Tests: `lua5.1 tests/run_all_tests.lua` (14 suites, includes quest
+  types coverage). Mocks live in `tests/mock_wow_api.lua`.
 
 ## Token rules (how to work cheap and stay accurate)
 
@@ -57,6 +59,12 @@ frame, and every extra line costs runtime + review tokens later.
   rows get poisoned (`tracker.lua:438`, `journal.lua:122`).
 - Tooltip text: sanitize markup/length (`SanitizePartyString`
   pattern), use `%s` in formats, guard `cur/tot` division.
+- Quest coverage & state hashing: `quest.lua:UpdateQuestlog` fingerprints
+  each quest via `(watched, objectives[i].{text, done}, complete)`.
+  Objectives without numeric counts (talk/event/gossip/explore) rely on
+  `done` and `complete` to trigger `RELOAD`. Invocation quests must list
+  both the summon item and target NPC in `__o` (`IR:<item>;U:<npc>`) so
+  pins persist when items are consumed. Gated by `test_quest_types_coverage.lua`.
 
 ## Hot paths — touch with care
 

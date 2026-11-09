@@ -166,6 +166,8 @@ function M.create_env()
     function f:StartMoving() end
     function f:StopMovingOrSizing() end
     function f:SetMovable() end
+    function f:SetBackdrop() end
+    function f:SetBackdropColor() end
     function f:SetBackdropBorderColor() end
     function f:SetVerticalScroll(v) self._vscroll = v end
     function f:GetVerticalScroll() return self._vscroll or 0 end
