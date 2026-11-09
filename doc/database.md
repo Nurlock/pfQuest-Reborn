@@ -11,9 +11,9 @@ Read/query layer over the static `pfDB` tables. Two globals:
   results cached in `pfQuest_questcache` keyed by
   `title:level:objective:text`. Empty-table entries are valid
   negative cache (hit check is key existence, not `[1]`).
-- Search: `BrowserSearch(query, type)` for items/quests/objects/units
-  (numeric query → ID lookup, else name); `GetIDByName`,
-  `GetIDByIDPart`, `SearchMobID`, `SearchAreaTriggerID`.
+- Search: `GetIDByName(name, type, partial)` for items/quests/
+  objects/units (partial name match); `SearchMobID`,
+  `SearchAreaTriggerID`.
 - Helpers: `ShowExtendedTooltip`, difficulty colors, race/class bit
   masks, `GetQuestsCompleted` reconciliation (writes completions to
   `pfQuest_history` with normalized keys).
