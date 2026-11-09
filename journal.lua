@@ -4,20 +4,10 @@ local compat = pfQuestCompat
 -- Performance: cache frequently-used globals
 local pairs = pairs
 local min, max = math.min, math.max
-local getn = table.getn
 local date = date
 local GetTime = GetTime
-local MouseIsOver = MouseIsOver
 
 local collapsed = {}
-
-local function tablesize(tbl)
-  local count = 0
-  for _ in pairs(tbl) do
-    count = count + 1
-  end
-  return count
-end
 
 local function OnEnter()
   -- show remove button and highlight for quest entries (not column headers)
