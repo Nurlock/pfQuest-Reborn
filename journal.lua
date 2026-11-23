@@ -1,8 +1,4 @@
--- multi api compat
-local compat = pfQuestCompat
-
 -- Performance: cache frequently-used globals
-local pairs = pairs
 local min, max = math.min, math.max
 local date = date
 local GetTime = GetTime

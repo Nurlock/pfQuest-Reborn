@@ -2,7 +2,7 @@
 local strsplit = pfUI and pfUI.api and pfUI.api.strsplit
 
 local lastBroadcast = 0
-local version, remote, major, minor, fix, displayed, available
+local version, remote, major, minor, fix, displayed
 -- Wire format is the dotted string "1.2.3". Bare numbers are legacy
 -- senders (major*10000+minor*100+fix), decoded best-effort.
 local function ParseVersion(str)
@@ -73,7 +73,7 @@ versioncheck:SetScript("OnEvent", function()
   end
 
   -- send updates only on initial login or group join
-  if version and (event == "PLAYER_ENTERING_WORLD" or event == "PARTY_MEMBERS_CHANGED" or event == "RAID_ROSTER_UPDATE") then
+  if (event == "PLAYER_ENTERING_WORLD" or event == "PARTY_MEMBERS_CHANGED" or event == "RAID_ROSTER_UPDATE") then
     local now = (GetTime and GetTime()) or 0
     if now - lastBroadcast >= 10 then
       lastBroadcast = now
@@ -92,7 +92,7 @@ versioncheck:SetScript("OnEvent", function()
   -- display available update
   local latest = pfQuest_config.latest
   if type(latest) ~= "table" then latest = ParseVersion(latest) end
-  if version and version > 0 and latest and Newer(latest[1], latest[2], latest[3], major, minor, fix) and not displayed then
+  if version > 0 and latest and Newer(latest[1], latest[2], latest[3], major, minor, fix) and not displayed then
     DEFAULT_CHAT_FRAME:AddMessage(
       "|cff33ffccpf|cffffffffQuest |cff888888[Reborn]|r: " .. pfQuest_Loc["New version available!"]
     )

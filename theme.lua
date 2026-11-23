@@ -85,7 +85,7 @@ function T.CreateProgressBar(parent, height)
   -- bar:Refresh() once the width is known -- deterministic, no polling.
   function bar.Apply(_)
     local pct = bar.pct
-    if bar.enabled == false or pct == nil then
+    if not bar.enabled or pct == nil then
       bar.track:Hide()
       bar.fill:Hide()
       return

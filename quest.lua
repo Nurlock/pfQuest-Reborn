@@ -5,10 +5,9 @@ client = client or 11200
 local _G = client == 11200 and getfenv(0) or _G
 
 -- Performance: cache frequently-used globals
-local pairs, ipairs, next = pairs, ipairs, next
-local strfind = strfind
+local pairs, ipairs = pairs, ipairs
 local format = string.format
-local getn, insert, concat = table.getn, table.insert, table.concat
+local concat = table.concat
 local tostring, tonumber, type = tostring, tonumber, type
 local GetTime = GetTime
 local UnitLevel = UnitLevel
@@ -126,10 +125,8 @@ end
 
 function pfQuest:Debug(msg)
   -- only show debug output if enabled
-  if not pfQuest_config.debug and pfQuest.debugwin then
-    pfQuest.debugwin:Hide()
-    return
-  elseif not pfQuest_config.debug then
+  if not pfQuest_config.debug then
+    if pfQuest.debugwin then pfQuest.debugwin:Hide() end
     return
   end
 
@@ -402,14 +399,14 @@ pfQuest:SetScript("OnUpdate", function()
     this.qlogtick = GetTime() + 1
   end
 
-  if this.updateQuestLog == true and pfQuest.queueCount == 0 then
+  if this.updateQuestLog and pfQuest.queueCount == 0 then
     local t0 = GetTime()
     pfQuest:UpdateQuestlog()
     pfQuest:Debug(format("Update Quest|cff33ffccLog %.4fs", GetTime() - t0))
     this.updateQuestLog = false
   end
 
-  if this.updateQuestGivers == true then
+  if this.updateQuestGivers then
     pfQuest:Debug("Update Quest|cff33ffcc Givers")
     if pfQuest_config["trackingmethod"] ~= 4 and pfQuest_config["allquestgivers"] == "1" then
       local meta = { ["addon"] = "PFQUEST" }
@@ -626,7 +623,7 @@ function pfQuest:UpdateQuestlog()
   -- initialize flip flop if not yet defined
   pfQuest.questlog_tmp = pfQuest.questlog_tmp or questlog_flip
 
-  local numEntries, numQuests = GetNumQuestLogEntries()
+  local numEntries = GetNumQuestLogEntries()
   local found = 0
   local change = nil
   local underCollapsedHeader = false
@@ -700,13 +697,7 @@ function pfQuest:UpdateQuestlog()
           isComplete = (complete == 1),
         }
         change = true
-      elseif pfQuest.questlog[questid].qlogid ~= qlogid then
-        queueAdd({ title, questid, qlogid, "RELOAD" })
-        pfQuest.questlog_tmp[questid] = pfQuest.questlog[questid]
-        pfQuest.questlog_tmp[questid].qlogid = qlogid
-        pfQuest.questlog_tmp[questid].state = state
-        change = true
-      elseif pfQuest.questlog[questid].state ~= state then
+      elseif pfQuest.questlog[questid].qlogid ~= qlogid or pfQuest.questlog[questid].state ~= state then
         queueAdd({ title, questid, qlogid, "RELOAD" })
         pfQuest.questlog_tmp[questid] = pfQuest.questlog[questid]
         pfQuest.questlog_tmp[questid].qlogid = qlogid
@@ -933,7 +924,7 @@ function pfQuest:AddQuestLogIntegration()
   pfQuest.buttonShow:SetScript("OnClick", function()
     local questIndex = GetQuestLogSelection()
     local questids = pfDatabase:GetQuestIDs(questIndex)
-    local title, _, _, header, _, complete = compat.GetQuestLogTitle(questIndex)
+    local _, _, header = compat.GetQuestLogTitle(questIndex)
     local id = questids and tonumber(questids[1])
     if header or not id then
       return
@@ -951,7 +942,7 @@ function pfQuest:AddQuestLogIntegration()
   pfQuest.buttonHide:SetPoint("TOP", dockTitle, "TOP", -37, 0)
   pfQuest.buttonHide:SetScript("OnClick", function()
     local questIndex = GetQuestLogSelection()
-    local title, _, _, header, _, complete = compat.GetQuestLogTitle(questIndex)
+    local title, _, _, header = compat.GetQuestLogTitle(questIndex)
     if header then
       return
     end
@@ -1283,7 +1274,7 @@ if not GetQuestLink then -- Allow to send questlinks from questlog
   QuestLogTitleButton_OnClick = function(button)
     local scrollFrame = EQL3_QuestLogListScrollFrame or ShaguQuest_QuestLogListScrollFrame or QuestLogListScrollFrame
     local questIndex = this:GetID() + FauxScrollFrame_GetOffset(scrollFrame)
-    local questName, questLevel = compat.GetQuestLogTitle(questIndex)
+    local questName = compat.GetQuestLogTitle(questIndex)
     local questids = pfDatabase:GetQuestIDs(questIndex)
     local questid = questids and tonumber(questids[1]) or 0
 

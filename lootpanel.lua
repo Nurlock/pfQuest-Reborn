@@ -232,8 +232,8 @@ local function GetButton(index)
 end
 
 local function LayoutButton(button, index, topOffset)
-  local col = (index - 1) - floor((index - 1) / GRID_COLUMNS) * GRID_COLUMNS
   local row = floor((index - 1) / GRID_COLUMNS)
+  local col = (index - 1) - row * GRID_COLUMNS
   button:ClearAllPoints()
   button:SetPoint("TOPLEFT", panel, "TOPLEFT",
     PANEL_MARGIN + col * (ICON_SIZE + ICON_PADDING),

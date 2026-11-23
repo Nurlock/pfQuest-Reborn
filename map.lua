@@ -64,7 +64,6 @@ end)
 local mainmap_base_effective_scale = nil
 mainmap_inversescale = 1.0
 
-local validmaps = setmetatable({}, { __mode = "kv" })
 local rgbcache = setmetatable({}, { __mode = "kv" })
 local minimap_sizes = pfDB["minimap"]
 
@@ -357,7 +356,7 @@ pfMap.tooltip:SetScript("OnShow", function()
   name = string.gsub(name, "|c%x%x%x%x%x%x%x%x", "")
   name = string.gsub(name, "|r", "")
 
-  if pfMap.tooltips[name] and pfMap.tooltips[name] then
+  if pfMap.tooltips[name] then
     for title, obj in pairs(pfMap.tooltips[name]) do
       if obj[zone] then
         pfMap:ShowTooltip(obj[zone], GameTooltip)
@@ -1442,7 +1441,7 @@ function pfMap:NodeEnter()
     end
   end
 
-  if itemStartMeta and itemStartMeta.dropsources_levels then
+  if itemStartMeta then
     tooltip:AddLine(" ")
     tooltip:AddLine(pfQuest_Loc["Drops from:"] or "Drops from:", 0.8, 0.8, 0.8)
 
@@ -1663,16 +1662,10 @@ function pfMap:UpdateNode(frame, node, color, obj, distance)
       frame.pic:Hide()
     end
 
-    if obj == "minimap" and pfQuest_config["cutoutminimap"] == "1" then
-      frame.tex:SetTexture(TEX_NODECUT)
-      frame.tex:SetVertexColor(r, g, b, 1)
-    elseif obj ~= "minimap" and pfQuest_config["cutoutworldmap"] == "1" then
-      frame.tex:SetTexture(TEX_NODECUT)
-      frame.tex:SetVertexColor(r, g, b, 1)
-    else
-      frame.tex:SetTexture(TEX_NODE)
-      frame.tex:SetVertexColor(r, g, b, 1)
-    end
+    local cutout = (obj == "minimap" and pfQuest_config["cutoutminimap"] == "1")
+      or (obj ~= "minimap" and pfQuest_config["cutoutworldmap"] == "1")
+    frame.tex:SetTexture(cutout and TEX_NODECUT or TEX_NODE)
+    frame.tex:SetVertexColor(r, g, b, 1)
   end
 
   if frame.updateLayer then
@@ -2111,7 +2104,6 @@ pfMap:RegisterEvent("MINIMAP_ZONE_CHANGED")
 pfMap:RegisterEvent("PLAYER_ENTERING_WORLD")
 pfMap:RegisterEvent("WORLD_MAP_UPDATE")
 pfMap:SetScript("OnEvent", function(self, event)
-  event = event or (this and event)
   -- set map to current zone when possible
   if event == "ZONE_CHANGED" or event == "MINIMAP_ZONE_CHANGED"
      or event == "ZONE_CHANGED_NEW_AREA" or event == "PLAYER_ENTERING_WORLD" then
@@ -2258,7 +2250,7 @@ pfMap:SetScript("OnUpdate", function()
       pfMap.mapJustOpened = true
     end
     resetmap = true
-  elseif resetmap == true then
+  elseif resetmap then
     SetMapToCurrentZone()
     resetmap = nil
   end

@@ -4,7 +4,7 @@ local compat = pfQuestCompat
 -- Performance: cache frequently-used globals
 local pairs = pairs
 local min, max = math.min, math.max
-local getn, sort = table.getn, table.sort
+local sort = table.sort
 local GetTime = GetTime
 
 local fontsize = 12
@@ -23,7 +23,6 @@ local function ShowTooltip()
     GameTooltip:ClearLines()
     GameTooltip_SetDefaultAnchor(GameTooltip, this)
     if this.text then
-      GameTooltip:SetText(this.text:GetText())
       GameTooltip:SetText(this.text:GetText(), this.text:GetTextColor())
     else
       GameTooltip:SetText("|cff33ffccpf|cffffffffQuest")
@@ -46,7 +45,7 @@ local function ShowTooltip()
         if objectives and objectives > 0 then
           for i = 1, objectives, 1 do
             local text, _, done = GetQuestLogLeaderBoard(i, qlogid)
-            local _, _, obj, cur, req = strfind(gsub(text, "\239\188\154", ":"), "(.*):%s*([%d]+)%s*/%s*([%d]+)")
+            local _, _, _, cur, req = strfind(gsub(text, "\239\188\154", ":"), "(.*):%s*([%d]+)%s*/%s*([%d]+)")
             if done then
               GameTooltip:AddLine(" - " .. text, 0, 1, 0)
             elseif cur and req then
@@ -271,7 +270,6 @@ do -- button panel
     anchors[anchor] = anchors[anchor] and anchors[anchor] + 1 or 0
     local pos = 1 + (panelheight + 1) * anchors[anchor]
     pos = anchor == "TOPLEFT" and pos or pos * -1
-    local func = func
 
     local b = CreateFrame("Button", nil, tracker.panel)
     b.tooltip = tooltip
@@ -401,7 +399,7 @@ function tracker.ButtonUpdate()
 
   local alpha = tonumber((pfQuest_config["trackeralpha"] or 0.2)) or 0.2
 
-  if not this.alpha or this.alpha ~= alpha then
+  if this.alpha ~= alpha then
     this.bg:SetTexture(0, 0, 0, alpha)
     this.bg:SetAlpha(alpha)
     this.alpha = alpha
@@ -506,7 +504,6 @@ function tracker.ButtonEvent(self)
   local self = self or this
   local title = self.title
   local node = self.node
-  local id = self.id
   local qid = self.questid
 
   self:SetHeight(0)
@@ -562,7 +559,7 @@ function tracker.ButtonEvent(self)
       return
     end
     local qlogid = pfQuest.questlog[qid] and pfQuest.questlog[qid].qlogid or 0
-    local qtitle, level, tag, header, collapsed, complete = compat.GetQuestLogTitle(qlogid)
+    local qtitle, level, tag, _, _, complete = compat.GetQuestLogTitle(qlogid)
     -- If qlogid is stale (quest shifted due to collapse/expand), suppress
     -- objectives to avoid briefly showing wrong data from the wrong slot.
     -- UpdateQuestlog will fix the qlogid shortly via RELOAD_QLOGID.
@@ -1048,7 +1045,7 @@ function tracker.Reset()
     local underCollapsedHeader = false
     local numEntries = GetNumQuestLogEntries()
     for qlogid = 1, numEntries do
-      local title, level, tag, header, collapsed, complete = compat.GetQuestLogTitle(qlogid)
+      local title, _, _, header, collapsed, complete = compat.GetQuestLogTitle(qlogid)
       if header then
         underCollapsedHeader = collapsed and true or false
       elseif title then

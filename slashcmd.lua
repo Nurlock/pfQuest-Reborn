@@ -9,7 +9,6 @@ local format = string.format
 
 SLASH_PFDB1, SLASH_PFDB2, SLASH_PFDB3, SLASH_PFDB4 = "/db", "/shagu", "/pfquest", "/pfdb"
 SlashCmdList["PFDB"] = function(input, editbox)
-  local params = {}
   local meta = { ["addon"] = "PFDB" }
 
   if input == "" or input == nil then
@@ -62,7 +61,6 @@ SlashCmdList["PFDB"] = function(input, editbox)
   end
 
   local commandlist = {}
-  local command
 
   for command in compat.gfind(input, "[^ ]+") do
     insert(commandlist, command)
@@ -125,7 +123,7 @@ SlashCmdList["PFDB"] = function(input, editbox)
 
   -- argument: quests
   if arg1 == "quests" then
-    local maps = pfDatabase:SearchQuests(meta)
+    pfDatabase:SearchQuests(meta)
     pfMap:RequestUpdate()
     return
   end
@@ -265,7 +263,6 @@ SlashCmdList["PFDB"] = function(input, editbox)
       state.min = state.max - 100
     end
 
-    state = commandlist[2] == "clean" and nil or state
     local maps = pfDatabase:TrackMeta("mines", state)
     pfMap:ShowMapID(pfDatabase:GetBestMap(maps))
     return
@@ -283,7 +280,6 @@ SlashCmdList["PFDB"] = function(input, editbox)
       state.min = state.max - 100
     end
 
-    state = commandlist[2] == "clean" and nil or state
     local maps = pfDatabase:TrackMeta("herbs", state)
     pfMap:ShowMapID(pfDatabase:GetBestMap(maps))
     return

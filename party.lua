@@ -32,17 +32,13 @@ local function GetGroupDistribution()
 end
 
 local function IsSyncEnabled()
-    if pfQuest_config then
-        if pfQuest_config["epochgroupsync"] == "0" then return false end
-    end
+    if pfQuest_config and pfQuest_config["epochgroupsync"] == "0" then return false end
     return true
 end
 
 local function IsTooltipEnabled()
     if not IsSyncEnabled() then return false end
-    if pfQuest_config then
-        if pfQuest_config["showpartytooltips"] == "0" then return false end
-    end
+    if pfQuest_config and pfQuest_config["showpartytooltips"] == "0" then return false end
     return true
 end
 
@@ -1403,24 +1399,8 @@ configExtenderFrame:SetScript("OnEvent", function(self, event, addonName)
         end
 
         local timer = 0
-        local rebuildRetries = 0
         self:SetScript("OnUpdate", function()
             timer = timer + 1
-
-            if rebuildRetries < 50 and (not pfDB or not pfDB["quests"] or not pfDB["quests"]["data"]) then
-                if timer % 5 == 0 then
-                    rebuildRetries = rebuildRetries + 1
-                    if pfDB and pfDB["quests"] and pfDB["quests"]["data"] then
-                                                    dbg("|cff33ffccpf|cffffffffQuest:|r pfDB now available, rebuilding quest mappings")
-                        RebuildQuestMappings()
-                        if IsInGroup() and IsSyncEnabled() then
-                            ShareQuestData(true)
-                        end
-                        self:SetScript("OnUpdate", nil)
-                        self:UnregisterAllEvents()
-                    end
-                end
-            end
 
             if timer > 300 then
                 self:SetScript("OnUpdate", nil)

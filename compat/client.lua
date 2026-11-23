@@ -7,7 +7,7 @@ local gfind = string.gmatch or string.gfind
 
 pfQuestCompat = {}
 pfQuestCompat.mod = mod or math.mod
-pfQuestCompat.gfind = string.gmatch or string.gfind
+pfQuestCompat.gfind = gfind
 pfQuestCompat.itemsuffix = client > 11200 and ":0:0:0:0:0:0:0" or ":0:0:0"
 pfQuestCompat.rotateMinimap = client > 11200 and GetCVar("rotateMinimap") ~= "0" and true or nil
 pfQuestCompat.client = client
@@ -64,7 +64,7 @@ end
 
 -- vanilla+tbc: do the best to detect the minimap arrow
 local minimaparrow = ({ Minimap:GetChildren() })[9]
-for k, v in pairs({ Minimap:GetChildren() }) do
+for _, v in pairs({ Minimap:GetChildren() }) do
   if v:IsObjectType("Model") and not v:GetName() then
     local model = v:GetModel()
     if model and string.find(strlower(model), "interface\\minimap\\minimaparrow") then

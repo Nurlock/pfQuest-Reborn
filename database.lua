@@ -5,10 +5,9 @@ local compat = pfQuestCompat
 local pairs, ipairs, next = pairs, ipairs, next
 local strfind, strlower, strlen = strfind or string.find, strlower or string.lower, strlen or string.len
 local format = format or string.format
-local min, max, abs = math.min, math.max, math.abs
-local floor, ceil = floor or math.floor, ceil or math.ceil
-local band = bit.band
-local getn, insert, concat = table.getn, table.insert, table.concat
+local min, max = math.min, math.max
+local floor = floor or math.floor
+local getn, insert = table.getn, table.insert
 local tostring, tonumber, type = tostring, tonumber, type
 local unpack = unpack or table.unpack
 local GetTime = GetTime
@@ -59,20 +58,9 @@ pfDB.locales = {
 pfDatabase = pfDatabase or { icons = {} }
 pfDatabase.icons = pfDatabase.icons or {}
 
--- Patch databases to further expansions
-local function patchtable(base, diff)
-  for k, v in pairs(diff) do
-    if type(v) == "string" and v == "_" then
-      base[k] = nil
-    else
-      base[k] = v
-    end
-  end
-end
-
 -- Return the best cluster point for a coordiante table
 local best, neighbors = { index = 1, neighbors = 0 }, 0
-local cache, cacheindex = {}, nil
+local cache, cacheindex = {}
 local cache_count = 0
 local CLUSTER_CACHE_MAX = 200
 local ymin, ymax, xmin, xmax
@@ -1328,7 +1316,7 @@ end
 -- Adds map nodes for each, saves it to the persistent
 -- tracking variable per character and returns a map table
 function pfDatabase:TrackMeta(list, state)
-  local list = alias[list] and alias[list] or list
+  local list = alias[list] or list
   local identifier = "TRACK_" .. string.upper(list)
 
   local meta = {
@@ -1339,8 +1327,6 @@ function pfDatabase:TrackMeta(list, state)
   local query = {
     name = list,
   }
-
-  local maps = nil
 
   -- hide previous tracks
   pfQuest_track[list] = nil
@@ -1399,7 +1385,7 @@ function pfDatabase:SearchZoneID(id, meta, maps, prio)
   local maps = maps or {}
   local prio = prio or 1
 
-  local zone, width, height, x, y, ex, ey = unpack(zones[id])
+  local zone, _, _, x, y = unpack(zones[id])
 
   if zone > 0 then
     maps[zone] = maps[zone] and maps[zone] + prio or prio
@@ -1419,7 +1405,6 @@ function pfDatabase:SearchZoneID(id, meta, maps, prio)
 
     pfMap:AddNode(meta)
     meta["title"] = passed_title
-    return maps
   end
 
   return maps
@@ -1605,7 +1590,6 @@ end
 -- Returns its map table
 function pfDatabase:SearchItem(item, meta, partial)
   local maps = {}
-  local bestmap, bestscore = nil, 0
 
   for id in pairs(pfDatabase:GetIDByName(item, "items", partial)) do
     maps = pfDatabase:SearchItemID(id, meta, maps)
@@ -1621,7 +1605,6 @@ end
 function pfDatabase:SearchVendor(item, meta)
   local maps = {}
   local meta = meta or {}
-  local bestmap, bestscore = nil, 0
 
   for id in pairs(pfDatabase:GetIDByName(item, "items")) do
     meta["itemid"] = id
@@ -1818,13 +1801,13 @@ function pfDatabase:SearchItemQuestStarters(id, itemIds, meta, maps)
           item_meta["qmin"] = quests[id] and quests[id]["min"]
 
           if quests[id] and quests[id]["min"] and quests[id]["min"] > plevel then
-            item_meta["vertex"] = { 1, .6, .6 }
+            item_meta["vertex"] = VERTEX_RED
             item_meta["layer"] = 2
           elseif quests[id] and quests[id]["lvl"] and quests[id]["lvl"] + 10 < plevel then
-            item_meta["vertex"] = { 1, 1, 1 }
+            item_meta["vertex"] = VERTEX_WHITE
             item_meta["layer"] = 2
           elseif quests[id] and quests[id]["event"] then
-            item_meta["vertex"] = { .2, .8, 1 }
+            item_meta["vertex"] = VERTEX_BLUE
             item_meta["layer"] = 2
           end
 
@@ -1891,7 +1874,6 @@ function pfDatabase:SearchQuestID(id, meta, maps)
       -- units
       if quests[id]["start"]["U"] then
         for _, unit in pairs(quests[id]["start"]["U"]) do
-          meta = meta or {}
           meta["QTYPE"] = "NPC_START"
           meta["layer"] = meta["layer"] or 4
           meta["texture"] = pfQuestConfig.path .. "\\img\\available_c"
@@ -1902,7 +1884,6 @@ function pfDatabase:SearchQuestID(id, meta, maps)
       -- objects
       if quests[id]["start"]["O"] then
         for _, object in pairs(quests[id]["start"]["O"]) do
-          meta = meta or {}
           meta["QTYPE"] = "OBJECT_START"
           meta["texture"] = pfQuestConfig.path .. "\\img\\available_c"
           maps = pfDatabase:SearchObjectID(object, meta, maps, 0)
@@ -1971,7 +1952,7 @@ function pfDatabase:SearchQuestID(id, meta, maps)
       if objNum and objNeeded then
         return (objNum + 0) >= (objNeeded + 0)
       end
-      return done and true or false
+      return done
     end
 
     -- Reforged: only trust the complete flag when the leaderboard agrees (all
@@ -2136,7 +2117,6 @@ function pfDatabase:SearchQuestID(id, meta, maps)
       for _, unit in pairs(quests[id]["obj"]["U"]) do
         if not parse_obj["U"][unit] or parse_obj["U"][unit] ~= "DONE" then
           if not skip_creatures or not skip_creatures[unit] then
-            meta = meta or {}
             meta["texture"] = nil
             meta["QTYPE"] = "UNIT_OBJECTIVE"
             maps = pfDatabase:SearchMobID(unit, meta, maps)
@@ -2151,7 +2131,6 @@ function pfDatabase:SearchQuestID(id, meta, maps)
       for _, object in pairs(quests[id]["obj"]["O"]) do
         if not parse_obj["O"][object] or parse_obj["O"][object] ~= "DONE" then
           if not skip_objects or not skip_objects[object] then
-            meta = meta or {}
             meta["texture"] = nil
             meta["layer"] = 2
             meta["QTYPE"] = "OBJECT_OBJECTIVE"
@@ -2173,7 +2152,6 @@ function pfDatabase:SearchQuestID(id, meta, maps)
         local singleHeld = parse_need[item] == 1
           and (pfDatabase.itemlist.db[item] or pfDatabase.itemlist.db[itemName])
         if (not parse_obj["I"][item] or parse_obj["I"][item] ~= "DONE") and not singleHeld then
-          meta = meta or {}
           meta["texture"] = nil
           meta["layer"] = 2
           if parse_obj["I"][item] then
@@ -2193,7 +2171,6 @@ function pfDatabase:SearchQuestID(id, meta, maps)
     -- areatrigger
     if quests[id]["obj"]["A"] then
       for _, areatrigger in pairs(quests[id]["obj"]["A"]) do
-        meta = meta or {}
         meta["texture"] = nil
         meta["layer"] = 2
         meta["QTYPE"] = "AREATRIGGER_OBJECTIVE"
@@ -2204,7 +2181,6 @@ function pfDatabase:SearchQuestID(id, meta, maps)
     -- zones
     if quests[id]["obj"]["Z"] then
       for _, zone in pairs(quests[id]["obj"]["Z"]) do
-        meta = meta or {}
         meta["texture"] = nil
         meta["layer"] = 2
         meta["QTYPE"] = "ZONE_OBJECTIVE"
@@ -2715,14 +2691,9 @@ function pfDatabase:GetQuestIDs(qid)
     end
 
     if not ttitle then
-      -- return early on unknown quests.
-      if not pfDatabase.localized then
-        -- skip cache if locale-checks are still running
-        return { title }
-      else
-        -- not cached so repeat lookups re-scan (save file stays clean)
-        return { title }
-      end
+      -- return early on unknown quests; never cached so repeat lookups re-scan
+      -- (save file stays clean), whether or not locale-checks are still running
+      return { title }
     else
       -- set title to best result
       title = ttitle
@@ -2838,7 +2809,7 @@ pfServerScan:SetScript("OnShow", function()
   DEFAULT_CHAT_FRAME:AddMessage("|cff33ffccpf|cffffffffQuest: " .. pfQuest_Loc["Server scan started..."])
 end)
 
-local ignore, custom_id, custom_skip = {}, nil, nil
+local ignore, custom_id, custom_skip = {}
 pfServerScan:SetScript("OnUpdate", function()
   if this.scanID >= this.max then
     this:Hide()

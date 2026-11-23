@@ -3,9 +3,6 @@ local compat = pfQuestCompat
 
 -- Performance: cache frequently-used globals
 local pairs = pairs
-local format = string.format
-local getn = table.getn
-local GetTime = GetTime
 
 -- Reforged perf: hoisted constant lists so the per-item / per-search loops below
 -- iterate a shared table instead of allocating a fresh one each time.
@@ -33,8 +30,6 @@ local items = pfDB["items"]["data"]
 local units = pfDB["units"]["data"]
 local objects = pfDB["objects"]["data"]
 local refloot = pfDB["refloot"] and pfDB["refloot"]["data"] or {}
-local quests = pfDB["quests"]["data"]
-local zones = pfDB["zones"]["loc"]
 
 
 local function ShowTooltip()
@@ -271,7 +266,7 @@ local function ResultButtonEnterSpecial()
   if this.buttonType == "U" then
     if items[id]["U"] then
       GameTooltip:SetText(pfQuest_Loc["Looted from"], 0.3, 1, 0.8)
-      for unitID, chance in pairs(items[id]["U"]) do
+      for unitID in pairs(items[id]["U"]) do
         count = count + 1
         if count > tooltip_limit then
           skip = true
@@ -288,7 +283,7 @@ local function ResultButtonEnterSpecial()
 
       -- reference tables
       if items[id]["R"] then
-        for ref, chance in pairs(items[id]["R"]) do
+        for ref in pairs(items[id]["R"]) do
           if refloot[ref] and refloot[ref]["U"] then
             for unit in pairs(refloot[ref]["U"]) do
               count = count + 1
@@ -322,7 +317,7 @@ local function ResultButtonEnterSpecial()
   elseif this.buttonType == "O" then
     if items[id]["O"] then
       GameTooltip:SetText(pfQuest_Loc["Looted from"], 0.3, 1, 0.8)
-      for objectID, chance in pairs(items[id]["O"]) do
+      for objectID in pairs(items[id]["O"]) do
         count = count + 1
         if count > tooltip_limit then
           skip = true
@@ -339,7 +334,7 @@ local function ResultButtonEnterSpecial()
 
       -- reference tables
       if items[id]["R"] then
-        for ref, chance in pairs(items[id]["R"]) do
+        for ref in pairs(items[id]["R"]) do
           if refloot[ref] and refloot[ref]["O"] then
             for unit in pairs(refloot[ref]["O"]) do
               count = count + 1
@@ -445,7 +440,7 @@ local function ResultButtonReload(self)
     self.text:SetText("|cffffcc00|Hquest:0:0:0:0|h[" .. self.name .. "]|h|r")
   elseif self.btype == "units" or self.btype == "objects" then
     local level = pfDB[self.btype]["data"][self.id] and pfDB[self.btype]["data"][self.id]["lvl"] or ""
-    if level and level ~= "" then
+    if level ~= "" then
       level = " (" .. level .. ")"
     end
     self.text:SetText(self.name .. "|cffaaaaaa" .. level)
@@ -559,7 +554,7 @@ local function ResultButtonCreate(i, resultType)
 end
 
 local function SelectView(view)
-  for id, frame in pairs(pfBrowser.tabs) do
+  for _, frame in pairs(pfBrowser.tabs) do
     pfUI.api.SetButtonFontColor(frame.button, 1, 1, 1, 0.7)
     frame:Hide()
   end
@@ -712,16 +707,16 @@ pfBrowser:SetScript("OnEvent", function()
   -- each entry is drained one per 0.1s by favdriver (shown when filled).
   if pfQuest_config.favonlogin == "1" then
     pfBrowser.favqueue = {}
-    for id, name in pairs(pfBrowser_fav.units) do
+    for id in pairs(pfBrowser_fav.units) do
       table.insert(pfBrowser.favqueue, { "units", id })
     end
-    for id, name in pairs(pfBrowser_fav.objects) do
+    for id in pairs(pfBrowser_fav.objects) do
       table.insert(pfBrowser.favqueue, { "objects", id })
     end
-    for id, name in pairs(pfBrowser_fav.items) do
+    for id in pairs(pfBrowser_fav.items) do
       table.insert(pfBrowser.favqueue, { "items", id })
     end
-    for id, name in pairs(pfBrowser_fav.quests) do
+    for id in pairs(pfBrowser_fav.quests) do
       table.insert(pfBrowser.favqueue, { "quests", id })
     end
     if table.getn(pfBrowser.favqueue) > 0 then
@@ -1015,8 +1010,8 @@ pfBrowser:SetScript("OnUpdate", function()
 
   -- multi-select handling
   if not this.selectState and IsControlKeyDown() and focus and focus.pfResultButton then
-    for id, frame in pairs(pfBrowser.tabs) do
-      for id, button in pairs(frame.buttons) do
+    for _, frame in pairs(pfBrowser.tabs) do
+      for _, button in pairs(frame.buttons) do
         if button.name == focus.name then
           button.tex:SetTexture(0.3, 1, 0.8, 0.4)
         end
@@ -1024,8 +1019,8 @@ pfBrowser:SetScript("OnUpdate", function()
     end
     this.selectState = "active"
   elseif this.selectState and (this.selectState == "clean" or not IsControlKeyDown()) then
-    for id, frame in pairs(pfBrowser.tabs) do
-      for id, button in pairs(frame.buttons) do
+    for _, frame in pairs(pfBrowser.tabs) do
+      for _, button in pairs(frame.buttons) do
         if compat.mod(button:GetID(), 2) == 1 then
           button.tex:SetTexture(1, 1, 1, 0.02)
         else

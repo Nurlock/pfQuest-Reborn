@@ -1,18 +1,8 @@
 -- Performance: cache frequently-used globals
 local pairs = pairs
 local floor, ceil, sqrt, abs = math.floor, math.ceil, math.sqrt, math.abs
-local sin, cos, rad, pi = math.sin, math.cos, math.rad, math.pi
--- WoW's global atan2 returns degrees; fallback for clients without it
-local atan2 = atan2 or function(x, y)
-  return math.deg(math.atan2(x, y))
-end
 local min, max = math.min, math.max
-local insert, sort = table.insert, table.sort
 local GetTime = GetTime
-
-local function modulo(val, by)
-  return val - floor(val / by) * by
-end
 
 local function GetNearest(xstart, ystart, db, blacklist)
   local nearest = nil
@@ -466,7 +456,7 @@ pfQuest.route:SetScript("OnUpdate", function()
     end
 
     ClearPath(objectivepath)
-    for i, data in pairs(route) do
+    for i in pairs(route) do
       if i > 1 then
         DrawLine(objectivepath, route[i - 1][1], route[i - 1][2], route[i][1], route[i][2])
       end
@@ -549,7 +539,7 @@ end
 local invalid, lasttarget, target
 local lastangle, lastt
 local xplayer, yplayer, wrongmap
-local xDelta, yDelta, dir, angle
+local xDelta, yDelta, angle
 local player, perc, column, row, xstart, ystart, xend, yend
 local area, alpha, texalpha, color
 local defcolor = "|cffffcc00"
@@ -639,7 +629,7 @@ pfQuest.route.arrow:SetScript("OnUpdate", function()
   r, g, b = pfUI.api.GetColorGradient(floor(perc * 100) / 100)
 
   -- guess area based on node count
-  area = target[3].priority and target[3].priority or 1
+  area = target[3].priority or 1
   area = max(1, area)
   area = min(20, area)
   area = (area / 10) + 1

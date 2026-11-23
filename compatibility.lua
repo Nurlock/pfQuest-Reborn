@@ -9,7 +9,7 @@
 -- addon has loaded), so this must run at event time, never at file top.
 
 local function ExternalNameplatesActive()
-  return IsAddOnLoaded and (IsAddOnLoaded("DragonUI") or IsAddOnLoaded("Nameplates")) and true or false
+  return IsAddOnLoaded and (IsAddOnLoaded("DragonUI") or IsAddOnLoaded("Nameplates"))
 end
 
 local function ApplyExternalNameplateCompat()

@@ -1,10 +1,8 @@
 -- multi api compat
-local compat = pfQuestCompat
 local L = pfQuest_Loc
 
 -- Performance: cache frequently-used globals
 local pairs = pairs
-local getn = table.getn
 
 pfQuest_history = pfQuest_history or {}
 pfQuest_colors = pfQuest_colors or {}
@@ -496,7 +494,7 @@ function pfQuestConfig:MigrateHistory()
     end
   end
 
-  if match == true then
+  if match then
     DEFAULT_CHAT_FRAME:AddMessage("|cff33ffccpf|cffffffffQuest|r: " .. L["Quest history migration completed."])
   end
 end

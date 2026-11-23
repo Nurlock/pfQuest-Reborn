@@ -1,8 +1,6 @@
 -- pfQuest Reborn: Objective Progress Chat Announcements
 -- Announces individual quest objective updates to group chat with clickable item links
 
-local L = pfQuest_Loc or setmetatable({}, { __index = function(_, k) return k end })
-
 pfQuestAnnounce = {}
 
 local objectiveState = {}

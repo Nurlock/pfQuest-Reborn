@@ -254,10 +254,6 @@ local function OnNameplateShow(nameplateFrame)
   end
 end
 
-local function OnNameplateHide(nameplateFrame)
-  RemoveIconFrame(nameplateFrame)
-end
-
 local function ScanWorldFrameChildren(...)
   local numFrames = select('#', ...)
 
@@ -271,7 +267,7 @@ local function ScanWorldFrameChildren(...)
 
         if frame.HookScript then
           frame:HookScript("OnShow", OnNameplateShow)
-          frame:HookScript("OnHide", OnNameplateHide)
+          frame:HookScript("OnHide", RemoveIconFrame)
         end
 
         if frame:IsShown() then

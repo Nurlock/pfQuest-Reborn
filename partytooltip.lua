@@ -213,10 +213,7 @@ hookFrame:SetScript("OnEvent", function(self, event, addonName)
         self:SetScript("OnUpdate", function()
             timer = timer + 1
             if timer > 10 then
-                if HookPfQuestTooltip() then
-                    self:SetScript("OnUpdate", nil)
-                    self:UnregisterAllEvents()
-                elseif timer > 300 then
+                if HookPfQuestTooltip() or timer > 300 then
                     self:SetScript("OnUpdate", nil)
                     self:UnregisterAllEvents()
                 end
