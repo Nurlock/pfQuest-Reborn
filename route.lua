@@ -1,28 +1,8 @@
 -- Performance: cache frequently-used globals
 local pairs = pairs
 local floor, ceil, sqrt, abs = math.floor, math.ceil, math.sqrt, math.abs
-local sin, cos, rad, pi = math.sin, math.cos, math.rad, math.pi
--- WoW's global atan2 returns degrees; fallback for clients without it
-local atan2 = atan2 or function(x, y)
-  return math.deg(math.atan2(x, y))
-end
 local min, max = math.min, math.max
-local getn, insert, sort = table.getn, table.insert, table.sort
 local GetTime = GetTime
-
--- table.getn doesn't return sizes on tables that
--- are using a named index on which setn is not updated
-local function tablesize(tbl)
-  local count = 0
-  for _ in pairs(tbl) do
-    count = count + 1
-  end
-  return count
-end
-
-local function modulo(val, by)
-  return val - floor(val / by) * by
-end
 
 local function GetNearest(xstart, ystart, db, blacklist)
   local nearest = nil
@@ -89,6 +69,10 @@ local function DrawLine(path, x, y, nx, ny, hl, minimap)
     local mapZoom = zoomrow[mZoom] or zoomrow[0]
     local mapWidth = pfMap.minimap_sizes[mapID] and pfMap.minimap_sizes[mapID][1] or 0
     local mapHeight = pfMap.minimap_sizes[mapID] and pfMap.minimap_sizes[mapID][2] or 0
+
+    -- zone missing from minimap_sizes (custom/instance/leaf zone): mapZoom/mapWidth
+    -- would be inf and silently zero the draw loop; this call is minimap-only
+    if mapWidth == 0 or mapHeight == 0 then return end
 
     -- calculate drawlayer size
     xdraw = pfMap.drawlayer:GetWidth() / (mapZoom / mapWidth) / 100
@@ -394,8 +378,8 @@ pfQuest.route:SetScript("OnUpdate", function()
 
     this.recalculate = GetTime() + 1
 
-    if this.refreshTrackerDistances and tracker and tracker.RefreshNearestDistances then
-      tracker:RefreshNearestDistances()
+    if this.refreshTrackerDistances and pfQuest.tracker and pfQuest.tracker.RefreshNearestDistances then
+      pfQuest.tracker:RefreshNearestDistances()
       this.refreshTrackerDistances = nil
     end
   end
@@ -434,6 +418,12 @@ pfQuest.route:SetScript("OnUpdate", function()
     return
   end
 
+  -- shortcut: O(n^2) GetNearest scans (distances already squared) plus one
+  -- O(n) itemreq sweep per chosen itemreq node, on every start-node change.
+  -- Genuine flips are rare (stabilizeBest hysteresis, sort once per second);
+  -- most reruns are route rebuilds (Reset/AddPoint nil firstnode), which are
+  -- event-driven and debounced 0.25s in map.lua. If all-questgivers routes
+  -- with n>300 hitch, cache pairwise distances -- never an n^2 distance matrix.
   -- check first node for changes (numeric concat already yields a string, so
   -- tostring() was redundant; build the key once instead of concatenating twice)
   local fnkey = this.coords[1][1] .. this.coords[1][2]
@@ -466,7 +456,7 @@ pfQuest.route:SetScript("OnUpdate", function()
     end
 
     ClearPath(objectivepath)
-    for i, data in pairs(route) do
+    for i in pairs(route) do
       if i > 1 then
         DrawLine(objectivepath, route[i - 1][1], route[i - 1][2], route[i][1], route[i][2])
       end
@@ -549,7 +539,7 @@ end
 local invalid, lasttarget, target
 local lastangle, lastt
 local xplayer, yplayer, wrongmap
-local xDelta, yDelta, dir, angle
+local xDelta, yDelta, angle
 local player, perc, column, row, xstart, ystart, xend, yend
 local area, alpha, texalpha, color
 local defcolor = "|cffffcc00"
@@ -639,7 +629,7 @@ pfQuest.route.arrow:SetScript("OnUpdate", function()
   r, g, b = pfUI.api.GetColorGradient(floor(perc * 100) / 100)
 
   -- guess area based on node count
-  area = target[3].priority and target[3].priority or 1
+  area = target[3].priority or 1
   area = max(1, area)
   area = min(20, area)
   area = (area / 10) + 1

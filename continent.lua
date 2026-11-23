@@ -1,8 +1,6 @@
 -- pfQuest Reborn: Continent & Dungeon Map Markers
 -- Projects zone quest nodes, flight paths, and utility NPCs onto the Continent Map view
 
-local L = pfQuest_Loc or setmetatable({}, { __index = function(_, k) return k end })
-
 local continentPins = {}
 local maxContinentPins = 1500
 
@@ -188,6 +186,7 @@ end
 -- Observe (never replace) map's update pipeline through the sanctioned seam.
 -- The continent body below runs unchanged after every map update.
 local function UpdateContinentPins()
+    if WorldMapFrame and not WorldMapFrame:IsShown() then return end
     if not GetCurrentMapContinent or not GetCurrentMapZone then
       return
     end
@@ -195,7 +194,7 @@ local function UpdateContinentPins()
     local continent = GetCurrentMapContinent()
     local zone = GetCurrentMapZone()
 
-    for i = 1, maxContinentPins do
+    for i = 1, table.getn(continentPins) do
       if continentPins[i] then
         continentPins[i]:Hide()
         continentPins[i].node = nil
@@ -276,10 +275,8 @@ local function UpdateContinentPins()
 
 if pfMap and pfMap.AddUpdateHook then
   pfMap:AddUpdateHook(function(kind, frame, node, color, obj)
-    if kind == "node" then
-      if obj ~= "minimap" and frame and frame.isContinentPin then
-        ResizeContinentNode(frame)
-      end
+    if kind == "node" and obj ~= "minimap" and frame and frame.isContinentPin then
+      ResizeContinentNode(frame)
     elseif kind == "nodes" then
       UpdateContinentPins()
     end

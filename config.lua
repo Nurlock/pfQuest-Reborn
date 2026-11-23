@@ -1,10 +1,8 @@
 -- multi api compat
-local compat = pfQuestCompat
 local L = pfQuest_Loc
 
 -- Performance: cache frequently-used globals
 local pairs = pairs
-local getn = table.getn
 
 pfQuest_history = pfQuest_history or {}
 pfQuest_colors = pfQuest_colors or {}
@@ -229,6 +227,13 @@ pfQuest_defconfig = {
 
   { text = L["Debug"], default = nil, type = "header" },
   { text = L["Generate Debug Log"], default = "1", type = "button", func = function() pfQuest:GenerateDebugLog() end },
+  { text = L["Report an Issue"], default = "1", type = "button", func = function()
+    local url = "https://github.com/Nurlock/pfQuest-Reborn/issues"
+    DEFAULT_CHAT_FRAME:AddMessage("|cff33ffccpf|cffffffffQuest: " .. L["Report issues:"] .. " |cffffffff" .. url .. "|r")
+    if pfQuest and pfQuest.ShowURL then
+      pfQuest:ShowURL(url)
+    end
+  end },
 }
 
 StaticPopupDialogs["PFQUEST_RESET"] = {
@@ -468,9 +473,11 @@ function pfQuestConfig:EnsurePath()
 end
 
 -- Links collapse state so it survives reloads (same table, no copy).
+-- Links to the SavedVar pfQuest_config (not this frame), so the tables
+-- written during the session are the ones SavedVariables serializes.
 function pfQuestConfig:LinkCollapsedIDs(store)
-  self.collapsedQuestIDs = self.collapsedQuestIDs or {}
-  store.collapsedQuestIDs = self.collapsedQuestIDs
+  pfQuest_config.collapsedQuestIDs = pfQuest_config.collapsedQuestIDs or {}
+  store.collapsedQuestIDs = pfQuest_config.collapsedQuestIDs
 end
 
 function pfQuestConfig:MigrateHistory()
@@ -494,7 +501,7 @@ function pfQuestConfig:MigrateHistory()
     end
   end
 
-  if match == true then
+  if match then
     DEFAULT_CHAT_FRAME:AddMessage("|cff33ffccpf|cffffffffQuest|r: " .. L["Quest history migration completed."])
   end
 end
@@ -954,6 +961,10 @@ pfQuestConfig:SetScript("OnEvent", function()
     pfQuestConfig:MigrateHistory()
     pfQuestConfig:CreateConfigEntries(pfQuest_defconfig)
 
+    if pfQuest_i18n and pfQuest_i18n.ApplyLanguage then
+      pfQuest_i18n.ApplyLanguage()
+    end
+
     -- If existing settings were present, mark welcome as done to prevent wizard popups on /reload
     if not isFresh and not pfQuest_config["welcome"] then
       pfQuest_config["welcome"] = "1"
@@ -969,10 +980,6 @@ pfQuestConfig:SetScript("OnEvent", function()
     -- clear quest history on new characters
     if UnitXP("player") == 0 and UnitLevel("player") == 1 then
       pfQuest_history = {}
-    end
-
-    if pfBrowserIcon and pfQuest_config["minimapbutton"] == "0" then
-      pfBrowserIcon:Hide()
     end
 
     if pfQuest and pfQuest.route and pfQuest.route.arrow then

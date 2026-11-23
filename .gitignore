@@ -2,6 +2,8 @@ dist/
 *.zip
 *.tsv
 
+context/
+
 __pycache__/
 
 # Pix Agent

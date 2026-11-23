@@ -159,7 +159,6 @@ pfUI.api.CreateBackdrop = pfUI.api.CreateBackdrop
 
       local level = f:GetFrameLevel()
       if level < 1 then
-        --f:SetFrameLevel(level + 1)
         b:SetFrameLevel(level)
       else
         b:SetFrameLevel(level - 1)
@@ -319,7 +318,7 @@ pfUI.api.round = pfUI.api.round
     end
     if type(input) == "number" and type(places) == "number" then
       local pow = 1
-      for i = 1, places do
+      for _ = 1, places do
         pow = pow * 10
       end
       return floor(input * pow + 0.5) / pow

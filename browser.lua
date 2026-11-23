@@ -3,9 +3,6 @@ local compat = pfQuestCompat
 
 -- Performance: cache frequently-used globals
 local pairs = pairs
-local format = string.format
-local getn = table.getn
-local GetTime = GetTime
 
 -- Reforged perf: hoisted constant lists so the per-item / per-search loops below
 -- iterate a shared table instead of allocating a fresh one each time.
@@ -33,8 +30,6 @@ local items = pfDB["items"]["data"]
 local units = pfDB["units"]["data"]
 local objects = pfDB["objects"]["data"]
 local refloot = pfDB["refloot"] and pfDB["refloot"]["data"] or {}
-local quests = pfDB["quests"]["data"]
-local zones = pfDB["zones"]["loc"]
 
 
 local function ShowTooltip()
@@ -271,7 +266,7 @@ local function ResultButtonEnterSpecial()
   if this.buttonType == "U" then
     if items[id]["U"] then
       GameTooltip:SetText(pfQuest_Loc["Looted from"], 0.3, 1, 0.8)
-      for unitID, chance in pairs(items[id]["U"]) do
+      for unitID in pairs(items[id]["U"]) do
         count = count + 1
         if count > tooltip_limit then
           skip = true
@@ -288,7 +283,7 @@ local function ResultButtonEnterSpecial()
 
       -- reference tables
       if items[id]["R"] then
-        for ref, chance in pairs(items[id]["R"]) do
+        for ref in pairs(items[id]["R"]) do
           if refloot[ref] and refloot[ref]["U"] then
             for unit in pairs(refloot[ref]["U"]) do
               count = count + 1
@@ -322,7 +317,7 @@ local function ResultButtonEnterSpecial()
   elseif this.buttonType == "O" then
     if items[id]["O"] then
       GameTooltip:SetText(pfQuest_Loc["Looted from"], 0.3, 1, 0.8)
-      for objectID, chance in pairs(items[id]["O"]) do
+      for objectID in pairs(items[id]["O"]) do
         count = count + 1
         if count > tooltip_limit then
           skip = true
@@ -339,7 +334,7 @@ local function ResultButtonEnterSpecial()
 
       -- reference tables
       if items[id]["R"] then
-        for ref, chance in pairs(items[id]["R"]) do
+        for ref in pairs(items[id]["R"]) do
           if refloot[ref] and refloot[ref]["O"] then
             for unit in pairs(refloot[ref]["O"]) do
               count = count + 1
@@ -445,7 +440,7 @@ local function ResultButtonReload(self)
     self.text:SetText("|cffffcc00|Hquest:0:0:0:0|h[" .. self.name .. "]|h|r")
   elseif self.btype == "units" or self.btype == "objects" then
     local level = pfDB[self.btype]["data"][self.id] and pfDB[self.btype]["data"][self.id]["lvl"] or ""
-    if level and level ~= "" then
+    if level ~= "" then
       level = " (" .. level .. ")"
     end
     self.text:SetText(self.name .. "|cffaaaaaa" .. level)
@@ -559,7 +554,7 @@ local function ResultButtonCreate(i, resultType)
 end
 
 local function SelectView(view)
-  for id, frame in pairs(pfBrowser.tabs) do
+  for _, frame in pairs(pfBrowser.tabs) do
     pfUI.api.SetButtonFontColor(frame.button, 1, 1, 1, 0.7)
     frame:Hide()
   end
@@ -570,7 +565,7 @@ local function SelectView(view)
 end
 
 -- sets the browser result values when they change
-local function RefreshView(i, key, caption)
+local function RefreshView(i, key, caption, truncated)
   pfBrowser.tabs[key].list:Hide()
   pfBrowser.tabs[key].list:SetHeight(i * 30)
   pfBrowser.tabs[key].list:Show()
@@ -587,14 +582,14 @@ local function RefreshView(i, key, caption)
     )
   end
 
-  if i >= search_limit then
+  if truncated then
     pfBrowser.tabs[key].list.warn:Show()
   else
     pfBrowser.tabs[key].list.warn:Hide()
   end
 
   pfBrowser.tabs[key].button:SetText(
-    pfQuest_Loc[caption] .. " " .. "|cffaaaaaa(" .. (i >= search_limit and "*" or i) .. ")"
+    pfQuest_Loc[caption] .. " " .. "|cffaaaaaa(" .. (truncated and "*" or i) .. ")"
   )
   for j = i + 1, table.getn(pfBrowser.tabs[key].buttons) do
     if pfBrowser.tabs[key].buttons[j] then
@@ -673,24 +668,59 @@ function pfBrowser:SearchText(t)
   self:Show()
   self.input:SetText(t)
 end
+-- Favorites-on-login needs its own shown driver: pfBrowser is hidden at
+-- creation and WoW skips OnUpdate on hidden frames, so the queue would sit
+-- until the player opened the window (nameplates ticker pattern).
+local favdriver = CreateFrame("Frame")
+favdriver:Hide()
+favdriver:SetScript("OnUpdate", function(self, elapsed)
+  self.elapsed = (self.elapsed or 0) + (elapsed or 0)
+  if self.elapsed < 0.1 then
+    return
+  end
+  self.elapsed = 0
+
+  local entry = pfBrowser.favqueue and table.remove(pfBrowser.favqueue, 1)
+  if not entry then
+    pfBrowser.favqueue = nil
+    self:Hide()
+    return
+  end
+
+  local ftype, id = entry[1], entry[2]
+  if ftype == "units" then
+    pfDatabase:SearchMobID(id)
+  elseif ftype == "objects" then
+    pfDatabase:SearchObjectID(id)
+  elseif ftype == "items" then
+    pfDatabase:SearchItemID(id)
+  elseif ftype == "quests" then
+    pfDatabase:SearchQuestID(id)
+  end
+  pfMap:RequestUpdate()
+end)
+
 pfBrowser:RegisterEvent("PLAYER_ENTERING_WORLD")
 pfBrowser:SetScript("OnEvent", function()
   -- queue favorites for incremental processing rather than running all
   -- Search*ID calls synchronously in one PLAYER_ENTERING_WORLD frame.
-  -- each entry is drained one per OnUpdate tick (see OnUpdate below).
+  -- each entry is drained one per 0.1s by favdriver (shown when filled).
   if pfQuest_config.favonlogin == "1" then
     pfBrowser.favqueue = {}
-    for id, name in pairs(pfBrowser_fav.units) do
+    for id in pairs(pfBrowser_fav.units) do
       table.insert(pfBrowser.favqueue, { "units", id })
     end
-    for id, name in pairs(pfBrowser_fav.objects) do
+    for id in pairs(pfBrowser_fav.objects) do
       table.insert(pfBrowser.favqueue, { "objects", id })
     end
-    for id, name in pairs(pfBrowser_fav.items) do
+    for id in pairs(pfBrowser_fav.items) do
       table.insert(pfBrowser.favqueue, { "items", id })
     end
-    for id, name in pairs(pfBrowser_fav.quests) do
+    for id in pairs(pfBrowser_fav.quests) do
       table.insert(pfBrowser.favqueue, { "quests", id })
+    end
+    if table.getn(pfBrowser.favqueue) > 0 then
+      favdriver:Show()
     end
   end
 end)
@@ -717,14 +747,6 @@ pfBrowser:SetScript("OnSizeChanged", function()
         tab.list:SetWidth(w - 40)
       end
     end
-  end
-end)
-
-pfBrowser:SetScript("OnShow", function()
-  local size = pfQuest_config and pfQuest_config.browsersize
-  if size and size[1] and size[2] then
-    this:SetWidth(size[1])
-    this:SetHeight(size[2])
   end
 end)
 
@@ -915,6 +937,18 @@ pfBrowser.input:SetScript("OnTextChanged", function()
   searchPending = true
 end)
 
+-- OnShow lives here, after `searchPending` is declared: a closure can't
+-- capture a local defined below it. Queues the first paint (captions, lists,
+-- favorites) on open instead of waiting for the first keystroke.
+pfBrowser:SetScript("OnShow", function()
+  local size = pfQuest_config and pfQuest_config.browsersize
+  if size and size[1] and size[2] then
+    this:SetWidth(size[1])
+    this:SetHeight(size[2])
+  end
+  searchPending = true
+end)
+
 -- Deferred search runner: fires at most once per 0.5s after the last keystroke.
 -- Scanning the database four times synchronously on every keystroke caused
 -- visible stuttering; this collapses rapid typing into a single search.
@@ -925,25 +959,6 @@ pfBrowser:SetScript("OnUpdate", function()
     return
   end
   this.elapsed = 0
-
-  -- drain one favorite search per tick to spread login cost across frames
-  if pfBrowser.favqueue and table.getn(pfBrowser.favqueue) > 0 then
-    local entry = table.remove(pfBrowser.favqueue, 1)
-    local ftype, id = entry[1], entry[2]
-    if ftype == "units" then
-      pfDatabase:SearchMobID(id)
-    end
-    if ftype == "objects" then
-      pfDatabase:SearchObjectID(id)
-    end
-    if ftype == "items" then
-      pfDatabase:SearchItemID(id)
-    end
-    if ftype == "quests" then
-      pfDatabase:SearchQuestID(id)
-    end
-    pfMap:RequestUpdate()
-  end
 
   -- run pending search once debounce interval has elapsed
   if searchPending then
@@ -962,11 +977,13 @@ pfBrowser:SetScript("OnUpdate", function()
           or pfBrowser_fav[searchType]
 
         local i = 0
+        local truncated
         for id, text in pairs(data) do
-          i = i + 1
           if i >= search_limit then
+            truncated = true
             break
           end
+          i = i + 1
           pfBrowser.tabs[searchType].buttons[i] = pfBrowser.tabs[searchType].buttons[i]
             or ResultButtonCreate(i, searchType)
           pfBrowser.tabs[searchType].buttons[i].id = id
@@ -974,7 +991,7 @@ pfBrowser:SetScript("OnUpdate", function()
           pfBrowser.tabs[searchType].buttons[i]:Reload()
         end
 
-        RefreshView(i, searchType, caption)
+        RefreshView(i, searchType, caption, truncated)
       end
     end
   else
@@ -993,8 +1010,8 @@ pfBrowser:SetScript("OnUpdate", function()
 
   -- multi-select handling
   if not this.selectState and IsControlKeyDown() and focus and focus.pfResultButton then
-    for id, frame in pairs(pfBrowser.tabs) do
-      for id, button in pairs(frame.buttons) do
+    for _, frame in pairs(pfBrowser.tabs) do
+      for _, button in pairs(frame.buttons) do
         if button.name == focus.name then
           button.tex:SetTexture(0.3, 1, 0.8, 0.4)
         end
@@ -1002,8 +1019,8 @@ pfBrowser:SetScript("OnUpdate", function()
     end
     this.selectState = "active"
   elseif this.selectState and (this.selectState == "clean" or not IsControlKeyDown()) then
-    for id, frame in pairs(pfBrowser.tabs) do
-      for id, button in pairs(frame.buttons) do
+    for _, frame in pairs(pfBrowser.tabs) do
+      for _, button in pairs(frame.buttons) do
         if compat.mod(button:GetID(), 2) == 1 then
           button.tex:SetTexture(1, 1, 1, 0.02)
         else

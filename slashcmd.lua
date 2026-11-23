@@ -9,7 +9,6 @@ local format = string.format
 
 SLASH_PFDB1, SLASH_PFDB2, SLASH_PFDB3, SLASH_PFDB4 = "/db", "/shagu", "/pfquest", "/pfdb"
 SlashCmdList["PFDB"] = function(input, editbox)
-  local params = {}
   local meta = { ["addon"] = "PFDB" }
 
   if input == "" or input == nil then
@@ -52,11 +51,19 @@ SlashCmdList["PFDB"] = function(input, editbox)
     DEFAULT_CHAT_FRAME:AddMessage(
       "|cff33ffcc/db|cffffffff query |cffcccccc - " .. pfQuest_Loc["Query the server for completed quests"]
     )
+    DEFAULT_CHAT_FRAME:AddMessage(
+      "|cff33ffcc/db|cffffffff debug |cffcccccc - " .. pfQuest_Loc["Toggle debug mode"]
+    )
+    DEFAULT_CHAT_FRAME:AddMessage(
+      "|cff33ffcc/db|cffffffff meta |cffcccccc - " .. pfQuest_Loc["Alias for /db track"]
+    )
+    DEFAULT_CHAT_FRAME:AddMessage(
+      "|cff33ffcc/db|cffffffff bug |cffcccccc - " .. pfQuest_Loc["Report issues: https://github.com/Nurlock/pfQuest-Reborn/issues"]
+    )
     return
   end
 
   local commandlist = {}
-  local command
 
   for command in compat.gfind(input, "[^ ]+") do
     insert(commandlist, command)
@@ -79,6 +86,19 @@ SlashCmdList["PFDB"] = function(input, editbox)
       "|cff33ffccpf|cffffffffQuest Debug Mode: " .. (pfQuest_config.debug and "|cff33ff33ON" or "|cffff3333OFF")
     )
     pfQuest:Debug("Debug Mode Changed")
+    return
+  end
+
+  -- argument: bug / issues
+  if arg1 == "bug" or arg1 == "issues" then
+    local url = "https://github.com/Nurlock/pfQuest-Reborn/issues"
+    DEFAULT_CHAT_FRAME:AddMessage("|cff33ffccpf|cffffffffQuest: " .. pfQuest_Loc["Report issues:"] .. " |cffffffff" .. url .. "|r")
+    if pfQuest and pfQuest.ShowURL then
+      pfQuest:ShowURL(url)
+    elseif StaticPopupDialogs and StaticPopupDialogs["PFQUEST_URLCOPY"] and StaticPopup_Show then
+      StaticPopupDialogs["PFQUEST_URLCOPY"].data = url
+      StaticPopup_Show("PFQUEST_URLCOPY")
+    end
     return
   end
 
@@ -119,7 +139,7 @@ SlashCmdList["PFDB"] = function(input, editbox)
 
   -- argument: quests
   if arg1 == "quests" then
-    local maps = pfDatabase:SearchQuests(meta)
+    pfDatabase:SearchQuests(meta)
     pfMap:RequestUpdate()
     return
   end
@@ -193,7 +213,7 @@ SlashCmdList["PFDB"] = function(input, editbox)
     ["herbs"] = true,
   }
 
-  if deprecated[arg1] then
+  if DEFAULT_CHAT_FRAME and deprecated[arg1] then
     DEFAULT_CHAT_FRAME:AddMessage(
       string.format(
         pfQuest_Loc['|cffffcc00WARNING:|r The command "|cff33ffcc/db %s|r" is deprecated and will be removed soon. Please use the "|cff33ffcc/db track %s|r" instead to achieve the same functionality.'],
@@ -249,21 +269,16 @@ SlashCmdList["PFDB"] = function(input, editbox)
 
   -- argument: mines (deprecated)
   if arg1 == "mines" then
-    local state = {
+    local state = commandlist[2] ~= "clean" and {
       min = commandlist[2],
       max = commandlist[3],
-    }
+    } or nil
 
-    if arg2 == "auto" then
+    if state and arg2 == "auto" then
       state.max = pfDatabase:GetPlayerSkill(186) or 0
       state.min = state.max - 100
     end
 
-    if commandlist[2] == "clean" then
-      state = nil
-    end
-
-    state = commandlist[2] == "clean" and nil or state
     local maps = pfDatabase:TrackMeta("mines", state)
     pfMap:ShowMapID(pfDatabase:GetBestMap(maps))
     return
@@ -271,21 +286,16 @@ SlashCmdList["PFDB"] = function(input, editbox)
 
   -- argument: herbs (deprecated)
   if arg1 == "herbs" then
-    local state = {
+    local state = commandlist[2] ~= "clean" and {
       min = commandlist[2],
       max = commandlist[3],
-    }
+    } or nil
 
-    if arg2 == "auto" then
+    if state and arg2 == "auto" then
       state.max = pfDatabase:GetPlayerSkill(182) or 0
       state.min = state.max - 100
     end
 
-    if commandlist[2] == "clean" then
-      state = nil
-    end
-
-    state = commandlist[2] == "clean" and nil or state
     local maps = pfDatabase:TrackMeta("herbs", state)
     pfMap:ShowMapID(pfDatabase:GetBestMap(maps))
     return

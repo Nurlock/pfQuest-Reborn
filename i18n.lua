@@ -50,6 +50,9 @@ function pfQuest_i18n.ApplyLanguage()
     if all[override] then active = all[override] end
   end
   pfQuest_i18n.set_locale(active)
+  if pfQuest_Loc then
+    for k in pairs(pfQuest_Loc) do pfQuest_Loc[k] = nil end
+  end
 end
 if pfQuest_I18N_en and pfQuest_I18N_STR2ID then
   pfQuest_i18n.init(pfQuest_I18N_en, pfQuest_I18N_STR2ID)

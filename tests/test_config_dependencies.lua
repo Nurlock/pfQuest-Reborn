@@ -206,4 +206,23 @@ end
 assert(foundButton, "Generate Debug Log button must live under Debug")
 print("  PASS: Debug tab button wired to pfQuest:GenerateDebugLog")
 
+print("[TEST] Verifying LinkCollapsedIDs points at the SavedVar (collapse survives /reload)...")
+-- Regression for audit finding 5: LinkCollapsedIDs used to link the store to a
+-- fresh table on the pfQuestConfig frame, so collapse state vanished on /reload.
+local collapseStore = {}
+pfQuestConfig:LinkCollapsedIDs(collapseStore)
+assert(type(pfQuest_config.collapsedQuestIDs) == "table",
+  "LinkCollapsedIDs must attach collapsedQuestIDs to pfQuest_config (the SavedVar)")
+collapseStore.collapsedQuestIDs[12345] = "Durotar"
+assert(pfQuest_config.collapsedQuestIDs[12345] == "Durotar",
+  "writes through store.collapsedQuestIDs must land in pfQuest_config.collapsedQuestIDs")
+-- /reload simulation: SavedVars reload as pfQuest_config; a fresh store relinking
+-- to the same SavedVar table must still see the collapse state.
+local reloadedStore = {}
+pfQuestConfig:LinkCollapsedIDs(reloadedStore)
+assert(reloadedStore.collapsedQuestIDs[12345] == "Durotar",
+  "collapse state must survive re-link after reload")
+pfQuest_config.collapsedQuestIDs[12345] = nil
+print("  ✓ PASS: collapse state is linked to pfQuest_config and survives reload")
+
 print("test_config_dependencies PASSED successfully!")

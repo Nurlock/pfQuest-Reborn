@@ -254,10 +254,6 @@ local function OnNameplateShow(nameplateFrame)
   end
 end
 
-local function OnNameplateHide(nameplateFrame)
-  RemoveIconFrame(nameplateFrame)
-end
-
 local function ScanWorldFrameChildren(...)
   local numFrames = select('#', ...)
 
@@ -271,7 +267,7 @@ local function ScanWorldFrameChildren(...)
 
         if frame.HookScript then
           frame:HookScript("OnShow", OnNameplateShow)
-          frame:HookScript("OnHide", OnNameplateHide)
+          frame:HookScript("OnHide", RemoveIconFrame)
         end
 
         if frame:IsShown() then
@@ -372,12 +368,12 @@ SlashCmdList["PFQUESTNP"] = function(msg)
     ScanQuestObjectives()
     UpdateAllNameplates()
   elseif msg == "on" then
-    pfQuest_config["epochnameplatesEnabled"] = "1"
+    pfQuestConfig:Set("epochnameplatesEnabled", "1")
     StartNameplateWatcher()
     UpdateAllNameplates()
     DEFAULT_CHAT_FRAME:AddMessage("|cff33ffccpf|cffffffffQuest:|r Nameplate icons enabled.")
   elseif msg == "off" then
-    pfQuest_config["epochnameplatesEnabled"] = "0"
+    pfQuestConfig:Set("epochnameplatesEnabled", "0")
     StopNameplateWatcher()
     for frame in pairs(iconFrames) do
       RemoveIconFrame(frame)

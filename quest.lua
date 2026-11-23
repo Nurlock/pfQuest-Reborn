@@ -5,10 +5,9 @@ client = client or 11200
 local _G = client == 11200 and getfenv(0) or _G
 
 -- Performance: cache frequently-used globals
-local pairs, ipairs, next = pairs, ipairs, next
-local strfind = strfind
+local pairs, ipairs = pairs, ipairs
 local format = string.format
-local getn, insert, concat = table.getn, table.insert, table.concat
+local concat = table.concat
 local tostring, tonumber, type = tostring, tonumber, type
 local GetTime = GetTime
 local UnitLevel = UnitLevel
@@ -126,10 +125,8 @@ end
 
 function pfQuest:Debug(msg)
   -- only show debug output if enabled
-  if not pfQuest_config.debug and pfQuest.debugwin then
-    pfQuest.debugwin:Hide()
-    return
-  elseif not pfQuest_config.debug then
+  if not pfQuest_config.debug then
+    if pfQuest.debugwin then pfQuest.debugwin:Hide() end
     return
   end
 
@@ -402,14 +399,14 @@ pfQuest:SetScript("OnUpdate", function()
     this.qlogtick = GetTime() + 1
   end
 
-  if this.updateQuestLog == true and pfQuest.queueCount == 0 then
+  if this.updateQuestLog and pfQuest.queueCount == 0 then
     local t0 = GetTime()
     pfQuest:UpdateQuestlog()
     pfQuest:Debug(format("Update Quest|cff33ffccLog %.4fs", GetTime() - t0))
     this.updateQuestLog = false
   end
 
-  if this.updateQuestGivers == true then
+  if this.updateQuestGivers then
     pfQuest:Debug("Update Quest|cff33ffcc Givers")
     if pfQuest_config["trackingmethod"] ~= 4 and pfQuest_config["allquestgivers"] == "1" then
       local meta = { ["addon"] = "PFQUEST" }
@@ -481,7 +478,7 @@ pfQuest:SetScript("OnUpdate", function()
 
         -- tell the party to clear our markers for this quest
         if pfQuest.partyapi and pfQuest.partyapi.BroadcastQuestRemove then
-          pfQuest.partyapi:BroadcastQuestRemove(entry[2], entry[1])
+          pfQuest.partyapi.BroadcastQuestRemove(entry[2], entry[1])
         end
 
         pfQuest.abandon = ""
@@ -626,7 +623,7 @@ function pfQuest:UpdateQuestlog()
   -- initialize flip flop if not yet defined
   pfQuest.questlog_tmp = pfQuest.questlog_tmp or questlog_flip
 
-  local numEntries, numQuests = GetNumQuestLogEntries()
+  local numEntries = GetNumQuestLogEntries()
   local found = 0
   local change = nil
   local underCollapsedHeader = false
@@ -655,10 +652,13 @@ function pfQuest:UpdateQuestlog()
         for i = 1, objectives, 1 do
           local text, _, done = GetQuestLogLeaderBoard(i, qlogid)
           sp[n + 1] = i
-          sp[n + 2] = text or (done and "done" or "todo")
-          n = n + 2
+          sp[n + 2] = text or ""
+          sp[n + 3] = done and "1" or "0"
+          n = n + 3
         end
       end
+      sp[n + 1] = (complete == 1 or complete == true) and "C" or ""
+      n = n + 1
       state = concat(sp, "", 1, n)
 
       -- announce quest objective completion only on active transition (incomplete -> complete)
@@ -697,13 +697,7 @@ function pfQuest:UpdateQuestlog()
           isComplete = (complete == 1),
         }
         change = true
-      elseif pfQuest.questlog[questid].qlogid ~= qlogid then
-        queueAdd({ title, questid, qlogid, "RELOAD" })
-        pfQuest.questlog_tmp[questid] = pfQuest.questlog[questid]
-        pfQuest.questlog_tmp[questid].qlogid = qlogid
-        pfQuest.questlog_tmp[questid].state = state
-        change = true
-      elseif pfQuest.questlog[questid].state ~= state then
+      elseif pfQuest.questlog[questid].qlogid ~= qlogid or pfQuest.questlog[questid].state ~= state then
         queueAdd({ title, questid, qlogid, "RELOAD" })
         pfQuest.questlog_tmp[questid] = pfQuest.questlog[questid]
         pfQuest.questlog_tmp[questid].qlogid = qlogid
@@ -770,9 +764,7 @@ end
 function pfQuest:ResetAll()
   -- force reload all quests
   pfMap:DeleteNode("PFQUEST")
-  if pfMap.DeleteNode then
-    pfMap:DeleteNode("PARTY")
-  end
+  pfMap:DeleteNode("PARTY")
   if pfQuest.partyapi and pfQuest.partyapi.CleanupPartyData then
     pfQuest.partyapi:CleanupPartyData()
   end
@@ -810,6 +802,28 @@ StaticPopupDialogs["PFQUEST_URLCOPY"] = {
   end,
 }
 
+function pfQuest:ShowURL(url)
+  if pfUI and pfUI.chat and pfUI.chat.urlcopy then
+    pfUI.chat.urlcopy.text:SetText(url)
+    pfUI.chat.urlcopy:Show()
+  elseif StaticPopupDialogs and StaticPopupDialogs["PFQUEST_URLCOPY"] then
+    StaticPopupDialogs["PFQUEST_URLCOPY"].data = url
+    local dialog = StaticPopup_Show and StaticPopup_Show("PFQUEST_URLCOPY")
+    if dialog then
+      local b1 = _G[dialog:GetName() .. "Button1"]
+      if b1 then
+        b1:ClearAllPoints()
+        b1:SetPoint("BOTTOM", dialog, "BOTTOM", 0, 16)
+      end
+      local eb = _G[dialog:GetName() .. "WideEditBox"]
+      if eb then
+        eb:SetScript("OnTextChanged", StaticPopup_EditBoxOnTextChanged)
+      end
+      dialog:SetWidth(420)
+    end
+  end
+end
+
 function pfQuest:AddQuestLogIntegration()
   if pfQuest_config["questlogbuttons"] == "0" then
     return
@@ -830,17 +844,7 @@ function pfQuest:AddQuestLogIntegration()
   pfQuest.buttonOnline:SetHeight(15)
   pfQuest.buttonOnline:SetPoint("TOPRIGHT", dockFrame, "TOPRIGHT", -12, -10)
   pfQuest.buttonOnline:SetScript("OnClick", function()
-    if pfUI and pfUI.chat then
-      pfUI.chat.urlcopy.text:SetText(pfQuest.dburl .. (this:GetID() or 0))
-      pfUI.chat.urlcopy:Show()
-    else
-      StaticPopupDialogs["PFQUEST_URLCOPY"].data = pfQuest.dburl .. (this:GetID() or 0)
-      local dialog = StaticPopup_Show("PFQUEST_URLCOPY")
-      _G[dialog:GetName() .. "Button1"]:ClearAllPoints()
-      _G[dialog:GetName() .. "Button1"]:SetPoint("BOTTOM", dialog, "BOTTOM", 0, 16)
-      _G[dialog:GetName() .. "WideEditBox"]:SetScript("OnTextChanged", StaticPopup_EditBoxOnTextChanged)
-      dialog:SetWidth(420)
-    end
+    pfQuest:ShowURL(pfQuest.dburl .. (this:GetID() or 0))
   end)
 
   pfQuest.buttonOnline.txt = pfQuest.buttonOnline:CreateFontString("pfQuestIDButton", "HIGH", "GameFontWhite")
@@ -858,7 +862,7 @@ function pfQuest:AddQuestLogIntegration()
   pfQuest.buttonLanguage.txt:SetJustifyH("RIGHT")
   pfQuest.buttonLanguage.txt:SetText("|cff000000[|cff333333" .. pfQuest_Loc["Translate"] .. "|cff000000]")
 
-  pfQuest.buttonLanguage:SetScript("OnClick", function()
+  pfQuest.buttonLanguage:SetScript("OnClick", function(self)
     UIDropDownMenu_Initialize(self, function()
       local func = function()
         pfQuest_config.translate = this.value
@@ -932,7 +936,7 @@ function pfQuest:AddQuestLogIntegration()
   pfQuest.buttonShow:SetScript("OnClick", function()
     local questIndex = GetQuestLogSelection()
     local questids = pfDatabase:GetQuestIDs(questIndex)
-    local title, _, _, header, _, complete = compat.GetQuestLogTitle(questIndex)
+    local _, _, _, header = compat.GetQuestLogTitle(questIndex)
     local id = questids and tonumber(questids[1])
     if header or not id then
       return
@@ -950,7 +954,7 @@ function pfQuest:AddQuestLogIntegration()
   pfQuest.buttonHide:SetPoint("TOP", dockTitle, "TOP", -37, 0)
   pfQuest.buttonHide:SetScript("OnClick", function()
     local questIndex = GetQuestLogSelection()
-    local title, _, _, header, _, complete = compat.GetQuestLogTitle(questIndex)
+    local title, _, _, header = compat.GetQuestLogTitle(questIndex)
     if header then
       return
     end
@@ -1282,7 +1286,7 @@ if not GetQuestLink then -- Allow to send questlinks from questlog
   QuestLogTitleButton_OnClick = function(button)
     local scrollFrame = EQL3_QuestLogListScrollFrame or ShaguQuest_QuestLogListScrollFrame or QuestLogListScrollFrame
     local questIndex = this:GetID() + FauxScrollFrame_GetOffset(scrollFrame)
-    local questName, questLevel = compat.GetQuestLogTitle(questIndex)
+    local questName = compat.GetQuestLogTitle(questIndex)
     local questids = pfDatabase:GetQuestIDs(questIndex)
     local questid = questids and tonumber(questids[1]) or 0
 

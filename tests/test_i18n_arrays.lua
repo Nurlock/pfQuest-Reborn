@@ -71,4 +71,12 @@ env.pfQuest_config = { language = "xx" }
 load_file("i18n.lua")
 assert(env.pfQuest_Loc["Close"] == close_expected, "invalid override must fall back to client locale")
 print("  PASS: invalid falls back")
+print("[TEST] ApplyLanguage flushes cached pfQuest_Loc...")
+env.pfQuest_config = { language = "deDE" }
+assert(env.pfQuest_Loc["Close"] == close_expected, "cache must hold pre-switch value")
+env.pfQuest_i18n.ApplyLanguage()
+local de_expected = env.pfQuest_I18N_deDE[close_id] or env.pfQuest_I18N_en[close_id]
+assert(de_expected ~= close_expected, "test key must differ between locales")
+assert(env.pfQuest_Loc["Close"] == de_expected, "ApplyLanguage must flush pfQuest_Loc and apply override")
+print("  PASS: flush + override")
 print("ALL I18N TESTS PASSED")

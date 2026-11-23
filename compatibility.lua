@@ -9,13 +9,13 @@
 -- addon has loaded), so this must run at event time, never at file top.
 
 local function ExternalNameplatesActive()
-  return IsAddOnLoaded and (IsAddOnLoaded("DragonUI") or IsAddOnLoaded("Nameplates")) and true or false
+  return IsAddOnLoaded and (IsAddOnLoaded("DragonUI") or IsAddOnLoaded("Nameplates"))
 end
 
 local function ApplyExternalNameplateCompat()
   if ExternalNameplatesActive()
     and pfQuest_config and pfQuest_config["epochnameplatesEnabled"] ~= "0" then
-    pfQuest_config["epochnameplatesEnabled"] = "0"
+    pfQuestConfig:Set("epochnameplatesEnabled", "0")
     if DEFAULT_CHAT_FRAME then
       DEFAULT_CHAT_FRAME:AddMessage("|cff33ffccpf|cffffffffQuest:|r Nameplate icons switched off (external nameplate addon detected).")
     end

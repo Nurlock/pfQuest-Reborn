@@ -28,7 +28,6 @@
   <Include file="..\announce.lua" />
   <Include file="..\journal.lua" />
   <Include file="..\menu.lua" />
-  <Include file="..\updatenotify.lua" />
   <Include file="..\party.lua" />
   <Include file="..\partytooltip.lua" />
 </Ui>

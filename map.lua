@@ -64,7 +64,6 @@ end)
 local mainmap_base_effective_scale = nil
 mainmap_inversescale = 1.0
 
-local validmaps = setmetatable({}, { __mode = "kv" })
 local rgbcache = setmetatable({}, { __mode = "kv" })
 local minimap_sizes = pfDB["minimap"]
 
@@ -357,7 +356,7 @@ pfMap.tooltip:SetScript("OnShow", function()
   name = string.gsub(name, "|c%x%x%x%x%x%x%x%x", "")
   name = string.gsub(name, "|r", "")
 
-  if pfMap.tooltips[name] and pfMap.tooltips[name] then
+  if pfMap.tooltips[name] then
     for title, obj in pairs(pfMap.tooltips[name]) do
       if obj[zone] then
         pfMap:ShowTooltip(obj[zone], GameTooltip)
@@ -623,6 +622,7 @@ function pfMap:GetMapNameByID(id)
 end
 
 function pfMap:GetMapIDByName(search)
+  if not search then return nil end
   if not pfDB or not pfDB["zones"] or not pfDB["zones"]["loc"] then return nil end
   if mapIDCacheRev ~= pfDB["zones"]["loc"] then
     mapIDCache = {}
@@ -1441,7 +1441,7 @@ function pfMap:NodeEnter()
     end
   end
 
-  if itemStartMeta and itemStartMeta.dropsources_levels then
+  if itemStartMeta then
     tooltip:AddLine(" ")
     tooltip:AddLine(pfQuest_Loc["Drops from:"] or "Drops from:", 0.8, 0.8, 0.8)
 
@@ -1489,11 +1489,9 @@ function pfMap:NodeEnter()
   pfMap.highlight = pfQuest_config["mouseover"] == "1" and this.title
 end
 
--- Single writer for the hover-highlight title.
-function pfMap:SetHighlight(title)
-  pfMap.highlight = title
-  pfMap:RequestUpdate()
-end
+-- Hover-highlight title; written directly by map pins (NodeEnter/NodeLeave),
+-- the quest-log click hook and tracker row hover -- no setter: a RequestUpdate
+-- from hover fed an update loop that strobed the tracker highlight.
 
 -- Single writer for click-to-recolor (map + tracker clicks come here).
 function pfMap:CyclePinColor(title)
@@ -1664,16 +1662,10 @@ function pfMap:UpdateNode(frame, node, color, obj, distance)
       frame.pic:Hide()
     end
 
-    if obj == "minimap" and pfQuest_config["cutoutminimap"] == "1" then
-      frame.tex:SetTexture(TEX_NODECUT)
-      frame.tex:SetVertexColor(r, g, b, 1)
-    elseif obj ~= "minimap" and pfQuest_config["cutoutworldmap"] == "1" then
-      frame.tex:SetTexture(TEX_NODECUT)
-      frame.tex:SetVertexColor(r, g, b, 1)
-    else
-      frame.tex:SetTexture(TEX_NODE)
-      frame.tex:SetVertexColor(r, g, b, 1)
-    end
+    local cutout = (obj == "minimap" and pfQuest_config["cutoutminimap"] == "1")
+      or (obj ~= "minimap" and pfQuest_config["cutoutworldmap"] == "1")
+    frame.tex:SetTexture(cutout and TEX_NODECUT or TEX_NODE)
+    frame.tex:SetVertexColor(r, g, b, 1)
   end
 
   if frame.updateLayer then
@@ -1767,9 +1759,20 @@ function pfMap:UpdateNodes()
   pfQuest.route:Reset()
 
   if not map then
+    local maxPins = math.max(table.getn(pfMap.pins), pfMap.pinCount or 0)
+    for j = 1, maxPins do
+      if pfMap.pins[j] then
+        pfMap.pins[j]:Hide()
+        pfMap.pins[j].lastX = nil
+        pfMap.pins[j].lastY = nil
+      end
+    end
     if pfQuest.tracker and pfQuest.tracker.DoLayout then
       pfQuest.tracker.DoLayout()
     end
+    pfMap.lastUpdateZone = nil
+    pfMap.lastUpdateMap = nil
+    pfMap.mapJustOpened = nil
     RunUpdateHooks("nodes")
     return
   end
@@ -1879,7 +1882,8 @@ function pfMap:UpdateNodes()
   pfQuest:Debug(format("UpdateNodes pins=%d skipped=%d", n_pins, n_skipped))
 
   -- hide remaining pins
-  for j = i, table.getn(pfMap.pins) do
+  pfMap.pinCount = math.max(pfMap.pinCount or 0, table.getn(pfMap.pins))
+  for j = i, pfMap.pinCount do
     if pfMap.pins[j] then
       pfMap.pins[j]:Hide()
       pfMap.pins[j].lastX = nil
@@ -2099,7 +2103,7 @@ pfMap:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 pfMap:RegisterEvent("MINIMAP_ZONE_CHANGED")
 pfMap:RegisterEvent("PLAYER_ENTERING_WORLD")
 pfMap:RegisterEvent("WORLD_MAP_UPDATE")
-pfMap:SetScript("OnEvent", function()
+pfMap:SetScript("OnEvent", function(self, event)
   -- set map to current zone when possible
   if event == "ZONE_CHANGED" or event == "MINIMAP_ZONE_CHANGED"
      or event == "ZONE_CHANGED_NEW_AREA" or event == "PLAYER_ENTERING_WORLD" then
@@ -2134,9 +2138,12 @@ pfMap:SetScript("OnEvent", function()
 
     if newzone == nil then
       -- continent view: hide all worldmap pins and route lines immediately
-      for j = 1, table.getn(pfMap.pins) do
+      local maxPins = math.max(table.getn(pfMap.pins), pfMap.pinCount or 0)
+      for j = 1, maxPins do
         if pfMap.pins[j] then
           pfMap.pins[j]:Hide()
+          pfMap.pins[j].lastX = nil
+          pfMap.pins[j].lastY = nil
         end
       end
       if pfQuest and pfQuest.route and pfQuest.route.drawlayer then
@@ -2144,12 +2151,9 @@ pfMap:SetScript("OnEvent", function()
       end
       pfMap.lastUpdateZone = nil
       pfMap.lastUpdateMap = nil
-    elseif pfMap.mapJustOpened then
-      -- map just opened on a zone: ensure route layer is visible and debounce
-      if pfQuest and pfQuest.route and pfQuest.route.drawlayer then
-        pfQuest.route.drawlayer:Show()
-      end
-      pfMap.queue_update = GetTime()
+      pfMap.queue_update = nil
+      pfMap.mapJustOpened = nil
+      RunUpdateHooks("nodes")
     elseif newzone ~= pfMap.lastUpdateZone or GetMapInfo() ~= pfMap.lastUpdateMap then
       -- deliberate zone change: update immediately, no debounce. The map file is
       -- compared as well as the zone id, so moving between a sub-map and its
@@ -2157,8 +2161,23 @@ pfMap:SetScript("OnEvent", function()
       if pfQuest and pfQuest.route and pfQuest.route.drawlayer then
         pfQuest.route.drawlayer:Show()
       end
+      local maxPins = math.max(table.getn(pfMap.pins), pfMap.pinCount or 0)
+      for j = 1, maxPins do
+        if pfMap.pins[j] then
+          pfMap.pins[j]:Hide()
+          pfMap.pins[j].lastX = nil
+          pfMap.pins[j].lastY = nil
+        end
+      end
       pfMap.queue_update = nil
+      pfMap.mapJustOpened = nil
       pfMap:UpdateNodes()
+    elseif pfMap.mapJustOpened then
+      -- map just opened on same zone: ensure route layer is visible and debounce initial render burst
+      if pfQuest and pfQuest.route and pfQuest.route.drawlayer then
+        pfQuest.route.drawlayer:Show()
+      end
+      pfMap.queue_update = GetTime()
     elseif pfMap.dirtyMaps[newzone] then
       -- same zone, pending writes: coalesce via debounce
       pfMap.queue_update = GetTime()
@@ -2231,7 +2250,7 @@ pfMap:SetScript("OnUpdate", function()
       pfMap.mapJustOpened = true
     end
     resetmap = true
-  elseif resetmap == true then
+  elseif resetmap then
     SetMapToCurrentZone()
     resetmap = nil
   end

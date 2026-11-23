@@ -40,3 +40,36 @@ assert(#added >= 1, "tooltip must gain loot lines")
 env.pfQuest_config["showloots"] = "0"
 assert(env.pfQuestLoot.AppendTooltipLines(fakeTip, 7001) == false, "disabled toggle must skip")
 print("  PASS: hook appends lines")
+
+-- One-slot memo: repeated hovers on the same unit name must not rescan
+-- the unit DB via GetIDByName; a different name triggers one fresh call.
+env.UnitIsPlayer = function() return false end
+env.pfQuest = env.pfQuest or {}
+env.pfQuest.partyapi = env.pfQuest.partyapi or {
+  IsInGroup = function() return false end,
+  IsTooltipEnabled = function() return false end,
+}
+local lookups = 0
+local hoverName = "Defias Thug"
+env.pfDatabase = { GetIDByName = function(self, name, db)
+  lookups = lookups + 1
+  assert(name == hoverName, "lookup must use the hovered name")
+  return { [7001] = true }
+end }
+load_file("partytooltip.lua")
+env.pfQuest.partyapi.HookGameTooltip()
+
+env.pfQuest_config["showloots"] = "1"
+local tip = env.GameTooltip
+tip.AddLine = function() end
+tip.Show = function() end
+tip.GetUnit = function() return hoverName, "target" end
+
+tip:FireScript("OnTooltipSetUnit")
+assert(lookups == 1, "first hover must call GetIDByName once, got " .. lookups)
+tip:FireScript("OnTooltipSetUnit")
+assert(lookups == 1, "same-name hover must hit the memo, got " .. lookups .. " calls")
+hoverName = "Bandit Bruiser"
+tip:FireScript("OnTooltipSetUnit")
+assert(lookups == 2, "new name must refresh the memo, got " .. lookups .. " calls")
+print("  PASS: one-slot loot memo")
