@@ -79,9 +79,24 @@ jobs:
           mkdir -p dist/pfQuest-Reborn
           # Export only tracked files (auto-excludes .git and untracked).
           git archive HEAD | tar -x -C dist/pfQuest-Reborn
-          # Drop dev-only files from the shipped addon.
-          rm -rf dist/pfQuest-Reborn/.github dist/pfQuest-Reborn/tools
-          rm -f  dist/pfQuest-Reborn/.gitignore
+          # Drop dev-only, doc, and test files from the shipped addon.
+          rm -rf dist/pfQuest-Reborn/.github \
+                 dist/pfQuest-Reborn/.pi \
+                 dist/pfQuest-Reborn/doc \
+                 dist/pfQuest-Reborn/scripts \
+                 dist/pfQuest-Reborn/tests \
+                 dist/pfQuest-Reborn/tools \
+                 dist/pfQuest-Reborn/context
+          rm -f  dist/pfQuest-Reborn/.gitignore \
+                 dist/pfQuest-Reborn/.gitattributes \
+                 dist/pfQuest-Reborn/.luacheckrc \
+                 dist/pfQuest-Reborn/AGENTS.md \
+                 dist/pfQuest-Reborn/CHANGES.md
+          # Verify that no test or dev artifacts leaked into the staged package.
+          if find dist/pfQuest-Reborn -name '*.py' -o -name 'test_*.lua' -o -path '*/.pi/*' | grep -q .; then
+            echo "::error::Staged package contains dev/test files!"
+            exit 1
+          fi
           # Stamp the version into every toc so addon managers show it.
           sed -i "s/^## Version:.*/## Version: ${{ steps.ver.outputs.version }}/" dist/pfQuest-Reborn/*.toc
 
