@@ -7,7 +7,7 @@ WoW 3.3.5a quest-helper addon. Pure Lua 5.1, no build step.
 `compat` → `theme` → `locales` → `config` → `slashcmd` → `database` →
 `icons` → `map` → `quest` → `route` → `tracker` → `browser` →
 `lootpanel` → `nameplates` → `continent` → `automation` → `announce` →
-`journal` → `menu` → `updatenotify` → `party` → `tooltip`.
+`journal` → `menu` → `party` → `tooltip`.
 
 Order matters: `browser.lua` dereferences `pfDB` at file top, so
 `database.lua` must load first.
@@ -55,7 +55,6 @@ table at load. Never alias a SavedVar table into transient state.
 | `announce.md` | Progress chat messages |
 | `journal.md` | Completion history window |
 | `menu.md` | Minimap button + menu |
-| `updatenotify.md` | Version broadcast |
 | `tooltip-sync.md` | Party sync protocol |
 | `tooltip.md` | Tooltip rendering (unit, pin, extended) |
 | `data.md` | `db/` data tables |

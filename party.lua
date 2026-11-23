@@ -1398,15 +1398,7 @@ configExtenderFrame:SetScript("OnEvent", function(self, event, addonName)
             ShareQuestData(true)
         end
 
-        local timer = 0
-        self:SetScript("OnUpdate", function()
-            timer = timer + 1
-
-            if timer > 300 then
-                self:SetScript("OnUpdate", nil)
-                self:UnregisterAllEvents()
-            end
-        end)
+        self:UnregisterAllEvents()
     end
 end)
 

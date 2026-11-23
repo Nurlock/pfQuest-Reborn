@@ -227,6 +227,13 @@ pfQuest_defconfig = {
 
   { text = L["Debug"], default = nil, type = "header" },
   { text = L["Generate Debug Log"], default = "1", type = "button", func = function() pfQuest:GenerateDebugLog() end },
+  { text = L["Report an Issue"], default = "1", type = "button", func = function()
+    local url = "https://github.com/Nurlock/pfQuest-Reborn/issues"
+    DEFAULT_CHAT_FRAME:AddMessage("|cff33ffccpf|cffffffffQuest: " .. L["Report issues:"] .. " |cffffffff" .. url .. "|r")
+    if pfQuest and pfQuest.ShowURL then
+      pfQuest:ShowURL(url)
+    end
+  end },
 }
 
 StaticPopupDialogs["PFQUEST_RESET"] = {

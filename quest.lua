@@ -802,6 +802,28 @@ StaticPopupDialogs["PFQUEST_URLCOPY"] = {
   end,
 }
 
+function pfQuest:ShowURL(url)
+  if pfUI and pfUI.chat and pfUI.chat.urlcopy then
+    pfUI.chat.urlcopy.text:SetText(url)
+    pfUI.chat.urlcopy:Show()
+  elseif StaticPopupDialogs and StaticPopupDialogs["PFQUEST_URLCOPY"] then
+    StaticPopupDialogs["PFQUEST_URLCOPY"].data = url
+    local dialog = StaticPopup_Show and StaticPopup_Show("PFQUEST_URLCOPY")
+    if dialog then
+      local b1 = _G[dialog:GetName() .. "Button1"]
+      if b1 then
+        b1:ClearAllPoints()
+        b1:SetPoint("BOTTOM", dialog, "BOTTOM", 0, 16)
+      end
+      local eb = _G[dialog:GetName() .. "WideEditBox"]
+      if eb then
+        eb:SetScript("OnTextChanged", StaticPopup_EditBoxOnTextChanged)
+      end
+      dialog:SetWidth(420)
+    end
+  end
+end
+
 function pfQuest:AddQuestLogIntegration()
   if pfQuest_config["questlogbuttons"] == "0" then
     return
@@ -822,17 +844,7 @@ function pfQuest:AddQuestLogIntegration()
   pfQuest.buttonOnline:SetHeight(15)
   pfQuest.buttonOnline:SetPoint("TOPRIGHT", dockFrame, "TOPRIGHT", -12, -10)
   pfQuest.buttonOnline:SetScript("OnClick", function()
-    if pfUI and pfUI.chat then
-      pfUI.chat.urlcopy.text:SetText(pfQuest.dburl .. (this:GetID() or 0))
-      pfUI.chat.urlcopy:Show()
-    else
-      StaticPopupDialogs["PFQUEST_URLCOPY"].data = pfQuest.dburl .. (this:GetID() or 0)
-      local dialog = StaticPopup_Show("PFQUEST_URLCOPY")
-      _G[dialog:GetName() .. "Button1"]:ClearAllPoints()
-      _G[dialog:GetName() .. "Button1"]:SetPoint("BOTTOM", dialog, "BOTTOM", 0, 16)
-      _G[dialog:GetName() .. "WideEditBox"]:SetScript("OnTextChanged", StaticPopup_EditBoxOnTextChanged)
-      dialog:SetWidth(420)
-    end
+    pfQuest:ShowURL(pfQuest.dburl .. (this:GetID() or 0))
   end)
 
   pfQuest.buttonOnline.txt = pfQuest.buttonOnline:CreateFontString("pfQuestIDButton", "HIGH", "GameFontWhite")
@@ -924,7 +936,7 @@ function pfQuest:AddQuestLogIntegration()
   pfQuest.buttonShow:SetScript("OnClick", function()
     local questIndex = GetQuestLogSelection()
     local questids = pfDatabase:GetQuestIDs(questIndex)
-    local _, _, header = compat.GetQuestLogTitle(questIndex)
+    local _, _, _, header = compat.GetQuestLogTitle(questIndex)
     local id = questids and tonumber(questids[1])
     if header or not id then
       return

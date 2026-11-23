@@ -240,3 +240,52 @@ env.pfQuestCompat.GetQuestLogTitle = savedQuestLogTitle
 env.GetQuestLogQuestText = savedQuestText
 assert(env.pfDatabase.GetQuestIDs == savedGetQuestIDs, "GetQuestIDs must be left untouched")
 print("  PASS: GetQuestIDs audit coverage complete")
+
+print("[TEST] Quest log 'Show' button with tagged quest (e.g. Elite)...")
+load_file("quest.lua")
+env.QuestLogDetailScrollChildFrame = env.CreateFrame("Frame")
+local mockTitle = env.CreateFrame("FontString")
+mockTitle.GetHeight = function() return 20 end
+mockTitle.SetHeight = function() end
+mockTitle.SetJustifyV = function() end
+env.QuestLogDescriptionTitle = mockTitle
+env.pfQuestCompat.QuestLogDescriptionTitle = mockTitle
+env.GetQuestLogSelection = function() return 1 end
+env.pfDatabase.GetQuestIDs = function(self, qid) return { 101 } end
+env.pfQuestCompat.GetQuestLogTitle = function(id)
+  -- 1: title, 2: level, 3: tag ("Elite"), 4: header (nil), 5: collapsed, 6: complete
+  return "Elite Quest", 60, "Elite", nil, nil, nil
+end
+local searchedQuestId = nil
+env.pfDatabase.SearchQuestID = function(self, id, meta, maps)
+  searchedQuestId = id
+  return maps
+end
+env.pfQuest:AddQuestLogIntegration()
+assert(env.pfQuest.buttonShow, "buttonShow must exist")
+env.pfQuest.buttonShow:GetScript("OnClick")()
+assert(searchedQuestId == 101, "buttonShow must map tagged (Elite) quest 101, got " .. tostring(searchedQuestId))
+print("  PASS: tagged quest correctly mapped by buttonShow")
+
+print("[TEST] /db mines clean and /db herbs clean clearing nodes...")
+env.SlashCmdList = env.SlashCmdList or {}
+env.DEFAULT_CHAT_FRAME = env.DEFAULT_CHAT_FRAME or { AddMessage = function() end }
+load_file("slashcmd.lua")
+local deletedNodes = {}
+env.pfMap.DeleteNode = function(self, id) table.insert(deletedNodes, id) end
+env.pfDatabase.TrackMeta = function(self, list, state)
+  if not state then
+    table.insert(deletedNodes, "TRACK_" .. string.upper(list))
+    return {}
+  end
+  error("TrackMeta should receive nil state on clean!")
+end
+env.SlashCmdList["PFDB"]("mines clean")
+env.SlashCmdList["PFDB"]("herbs clean")
+local foundMines, foundHerbs = false, false
+for _, n in ipairs(deletedNodes) do
+  if n == "TRACK_MINES" then foundMines = true end
+  if n == "TRACK_HERBS" then foundHerbs = true end
+end
+assert(foundMines and foundHerbs, "/db mines clean and /db herbs clean must pass nil state and delete track nodes")
+print("  PASS: /db mines clean and herbs clean pass nil state correctly")

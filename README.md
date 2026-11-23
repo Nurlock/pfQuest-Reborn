@@ -56,6 +56,7 @@ A standalone edition of [pfQuest](https://github.com/shagu/pfQuest) for WoW 3.3.
 | `/db locale` | Display active addon localization. |
 | `/db debug` | Toggle debug mode (timings/diagnostics). |
 | `/db meta` | List available metadata tracking lists, or track/clean a specific list (alias of `/db track`). |
+| `/db bug` | Show bug report URL with one-click copy dialog for GitHub issues. |
 
 ---
 
