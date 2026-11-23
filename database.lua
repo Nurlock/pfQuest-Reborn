@@ -1803,7 +1803,7 @@ function pfDatabase:SearchItemQuestStarters(id, itemIds, meta, maps)
           if quests[id] and quests[id]["min"] and quests[id]["min"] > plevel then
             item_meta["vertex"] = VERTEX_RED
             item_meta["layer"] = 2
-          elseif quests[id] and quests[id]["lvl"] and quests[id]["lvl"] + 10 < plevel then
+          elseif quests[id] and quests[id]["lvl"] and quests[id]["lvl"] > 0 and quests[id]["lvl"] + 10 < plevel then
             item_meta["vertex"] = VERTEX_WHITE
             item_meta["layer"] = 2
           elseif quests[id] and quests[id]["event"] then
@@ -2307,12 +2307,15 @@ function pfDatabase:QuestFilter(id, plevel, pclass, prace)
   end
 
   -- hide non-available quests for your profession (uses cache when inside SearchQuests)
-  if quests[id]["skill"] and not pfDatabase:GetPlayerSkillCached(quests[id]["skill"]) then
-    return
+  if quests[id]["skill"] then
+    local skillRank = pfDatabase:GetPlayerSkillCached(quests[id]["skill"])
+    if not skillRank or (quests[id]["skillmin"] and skillRank < quests[id]["skillmin"]) then
+      return
+    end
   end
 
   -- hide lowlevel quests
-  if quests[id]["lvl"] and quests[id]["lvl"] < plevel - 4 and pfQuest_config["showlowlevel"] == "0" then
+  if quests[id]["lvl"] and quests[id]["lvl"] > 0 and quests[id]["lvl"] < plevel - 4 and pfQuest_config["showlowlevel"] == "0" then
     return
   end
 
@@ -2521,7 +2524,7 @@ function pfDatabase:SearchQuests(meta, maps)
       end
 
       -- tint low level quests grey
-      if quests[id]["lvl"] and quests[id]["lvl"] + 10 < plevel then
+      if quests[id]["lvl"] and quests[id]["lvl"] > 0 and quests[id]["lvl"] + 10 < plevel then
         meta["texture"] = pfQuestConfig.path .. "\\img\\available"
         meta["vertex"] = VERTEX_WHITE
         meta["layer"] = 2

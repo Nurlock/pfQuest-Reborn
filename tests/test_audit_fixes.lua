@@ -289,3 +289,23 @@ for _, n in ipairs(deletedNodes) do
 end
 assert(foundMines and foundHerbs, "/db mines clean and /db herbs clean must pass nil state and delete track nodes")
 print("  PASS: /db mines clean and herbs clean pass nil state correctly")
+
+print("[TEST] QuestFilter skillmin and lvl <= 0 guards...")
+env.pfDB["quests"]["data"][99901] = { ["lvl"] = 10, ["min"] = 5, ["skill"] = 185, ["skillmin"] = 50 }
+env.pfDB["quests"]["loc"][99901] = { T = "Test Cooking Quest" }
+env.pfDB["quests"]["data"][99902] = { ["lvl"] = 0, ["min"] = 1 }
+env.pfDB["quests"]["loc"][99902] = { T = "Test Lvl0 Quest" }
+env.pfDB["professions"] = { ["loc"] = { [185] = "Cooking" }, ["enUS"] = { [185] = "Cooking" } }
+env.pfDatabase.Reload()
+env.GetNumSkillLines = function() return 1 end
+env.GetSkillLineInfo = function(i) if i == 1 then return "Cooking", nil, nil, 15 end return nil end
+env.pfDatabase:BuildSkillCache()
+local pass_under_skilled = env.pfDatabase:QuestFilter(99901, 14, 1024, 32)
+assert(pass_under_skilled == nil, "Quest requiring skillmin 50 must be hidden when player has rank 15")
+local pass_lvl0 = env.pfDatabase:QuestFilter(99902, 14, 1024, 32)
+assert(pass_lvl0 == true, "Quest with lvl 0 must not be hidden as low-level quest")
+env.GetSkillLineInfo = function(i) if i == 1 then return "Cooking", nil, nil, 50 end return nil end
+env.pfDatabase:BuildSkillCache()
+local pass_skilled = env.pfDatabase:QuestFilter(99901, 14, 1024, 32)
+assert(pass_skilled == true, "Quest requiring skillmin 50 must show when player has rank 50")
+print("  PASS: skillmin and lvl <= 0 guards in QuestFilter work correctly")
